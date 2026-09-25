@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Xenocats, XenocatCatsProvider, useXenocats } from '@/app/ui/xenocats/cat-layer';
 import { XenocatCursorProvider } from '@/app/ui/xenocats/fake-cursor';
+
+// Animation frames are faked and advanced explicitly, so nothing here depends on
+// how fast the machine is: the cats' and the cursor's frame loops run exactly when
+// `frames()` says. (Real frames + waitFor passed locally but failed on CI.)
 
 let clock = 0;
 let cats: Xenocats;
@@ -27,8 +31,18 @@ function renderCats() {
   );
 }
 
+/** Runs `n` animation frames (both frame loops) and lets React commit. */
+async function frames(n = 2) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(20 * n);
+  });
+}
+
+const phases = () => screen.getAllByTestId('xenocat').map((cat) => cat.dataset.phase);
+
 beforeEach(() => {
   clock = 0;
+  vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
   window.matchMedia = vi.fn().mockReturnValue({
     matches: true,
     addEventListener: vi.fn(),
@@ -36,7 +50,10 @@ beforeEach(() => {
   }) as unknown as typeof window.matchMedia;
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('XenocatCatsProvider', () => {
   it('draws a summoned cat, hidden from assistive technology', () => {
@@ -74,9 +91,9 @@ describe('XenocatCatsProvider', () => {
       cats.summon('void-tabby');
     });
     clock = 1000; // past the 800 ms entrance
-    const fake = screen.getByTestId('fake-cursor');
-    await waitFor(() => expect(fake.dataset.effect).toBe('vanish'));
-    expect(screen.getByTestId('xenocat').dataset.phase).toBe('attacking');
+    await frames();
+    expect(screen.getByTestId('fake-cursor').dataset.effect).toBe('vanish');
+    expect(phases()).toEqual(['attacking']);
   });
 
   it('with the real cursor, only one of two ready cats attacks at a time', async () => {
@@ -87,13 +104,14 @@ describe('XenocatCatsProvider', () => {
       cats.summon('gravi-coon');
     });
     clock = 1000; // both have arrived and want to attack
-    const phases = () => screen.getAllByTestId('xenocat').map((cat) => cat.dataset.phase);
-    await waitFor(() => expect(phases().sort()).toEqual(['attacking', 'ready']));
-    // Once the first cat's effect is over, the waiting one gets its turn.
+    await frames();
+    expect(phases().sort()).toEqual(['attacking', 'ready']);
+    // Once the first cat's 3 s vanish is over, the waiting one gets its turn.
     clock = 1000 + 3000 + 700;
-    await waitFor(() => expect(screen.getByTestId('fake-cursor').dataset.effect).not.toBe(''));
-    await waitFor(() => expect(phases()).toContain('attacking'));
+    await frames();
+    expect(screen.getByTestId('fake-cursor').dataset.effect).toBe('heavy');
     expect(phases()).not.toContain('ready');
+    expect(phases()).toContain('attacking');
   });
 
   it('a ready cat waits while the pointer is off the page', async () => {
@@ -104,11 +122,13 @@ describe('XenocatCatsProvider', () => {
       cats.summon('void-tabby');
     });
     clock = 1000;
-    await waitFor(() => expect(screen.getByTestId('xenocat').dataset.phase).toBe('ready'));
+    await frames();
+    expect(phases()).toEqual(['ready']);
     expect(screen.getByTestId('fake-cursor').dataset.effect).toBe('');
     // The pointer comes back: now it pounces.
     fireEvent.pointerMove(window, { clientX: 6, clientY: 5 });
-    await waitFor(() => expect(screen.getByTestId('xenocat').dataset.phase).toBe('attacking'));
+    await frames();
+    expect(phases()).toEqual(['attacking']);
   });
 
   it('a sleeping cat shows its z’s', async () => {
@@ -119,13 +139,13 @@ describe('XenocatCatsProvider', () => {
         </XenocatCatsProvider>
       </XenocatCursorProvider>
     );
-    // The first spawn is scheduled up to 1 ms after the first tick: keep time moving.
-    await waitFor(() => {
-      clock += 5;
-      expect(screen.getByTestId('xenocat')).toBeTruthy();
-    });
+    await frames(); // the first tick schedules the first spawn within 1 ms
+    clock = 10;
+    await frames();
+    expect(phases()).toEqual(['appearing']);
     clock = 1000; // arrived; now asleep
-    await waitFor(() => expect(screen.getByTestId('xenocat').dataset.phase).toBe('sleeping'));
-    expect(screen.getAllByText(/^z$/i).length).toBe(3);
+    await frames();
+    expect(phases()).toEqual(['sleeping']);
+    expect(screen.getAllByText(/^z$/i)).toHaveLength(3);
   });
 });

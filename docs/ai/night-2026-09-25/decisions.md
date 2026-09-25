@@ -143,3 +143,11 @@ during effects too. An effect longer than 10 s (`MAX_EFFECT_MS`) is refused,
 since clicks are blocked for its whole duration. Known gap: a native `<select>`
 popup may not report the pointer leaving, so the arrow can linger at its edge
 while the popup is open.
+
+## D1 amendment — `.next/dev/types` can also go stale (T5 CI cycle 2)
+
+`tsconfig.json` also includes `.next/dev/types/**/*.ts`, which only `next dev`
+writes (the e2e server) and `next typegen` does not refresh. After an e2e run on
+another branch it can reference routes this branch lacks. When `tsc` reports a
+missing module under `.next/dev/types`, remove that directory (build output the
+run itself created) and re-run the type check.

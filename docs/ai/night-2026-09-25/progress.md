@@ -438,3 +438,32 @@ art and animations come in T7–T9 on top of this roster shape.
   *dashboard* (37 tests), *cats, Node* (48), *cats, jsdom* (26); together the
   same 111 as `npm test` (verified locally). The next CI run names the failing
   group through `/jobs` alone. actionlint (with shellcheck, pyflakes) exit 0.
+
+## T5 — CI failure, cycle 2
+
+- 2026-09-25 17:50. Cycle 1's diagnostic CI run (`c57f229`) — task branch
+  https://github.com/lazurq-png/next.js-dashboard/actions/runs/36155393558,
+  run branch .../36155397750: lint, type check, *Unit tests (dashboard)* and
+  *Unit tests (cats, Node)* **success**; *Unit tests (cats, jsdom)* **failure**.
+  That group is `cursor-kind`, `fake-cursor` (both green on T4's CI) and
+  `cat-layer` — new in T5, so `tests/unit/xenocats/cat-layer.test.tsx` is the
+  failing file.
+- Still not reproducible locally: the jsdom group under 16 busy loops on 8
+  cores ×3 → 27/27 each.
+- Of the hypotheses, H1 (real animation frames + `waitFor`'s 1 s polling on a
+  slow runner) and H3 (frame callbacks around teardown) both point at the same
+  thing: `cat-layer.test.tsx` is the only test file whose assertions wait on
+  real `requestAnimationFrame` timing.
+- **Cycle 2 fix:** `cat-layer.test.tsx` fakes `requestAnimationFrame` /
+  `cancelAnimationFrame` (Vitest fake timers) and advances frames explicitly
+  (`frames()` → `vi.advanceTimersByTimeAsync` inside `act`); no `waitFor`
+  remains, so no assertion depends on wall-clock speed, and no frame can fire
+  after the test restores real timers. Assertions are unchanged or stricter
+  (exact phase lists; the second cat's effect is now asserted to be `heavy`).
+- Verification: the file ×3 → 7/7 each; negative control — the cat layer made
+  to ignore the cursor's "busy" answer → "only one of two ready cats attacks at
+  a time" failed (1 failed / 6 passed), restored with no diff; `npm test` 111
+  passed; lint 0; typegen + tsc 0 (after removing `.next/dev/types`, stale
+  route types `next dev` wrote on the T6 branch — D1 amended); `npm run
+  test:e2e` 3 passed; Prettier clean. Reviewer not re-run: test-only change to
+  make existing assertions deterministic.
