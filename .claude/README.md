@@ -19,22 +19,27 @@ CLAUDE.md               Claude Code operating model — always loaded by the ext
                                  (not yet done here — settings.json does not exist)
 ```
 
-This repository has **no single validation entry point** and **no test
-suite**. Verification is four commands, run separately (npm, since the lockfile
-is `package-lock.json`; `node_modules` from `npm ci`):
+This repository has **no single validation entry point.** Verification is
+these commands, run separately (npm, since the lockfile is `package-lock.json`;
+`node_modules` from `npm ci`):
 
 ```text
-npm run lint                         # ESLint; errors fail, warnings are advisory
-npx tsc --noEmit                     # type check
-npm run build                        # next build; may read the database while prerendering
-npx prettier --check <changed files> # never `npm run format`, which rewrites everything
+npm run lint                            # ESLint; errors fail, warnings are advisory
+npx next typegen && npx tsc --noEmit    # type check, with fresh route types
+npm test                                # Vitest unit tests (tests/unit/)
+npm run test:e2e                        # Playwright browser tests (tests/e2e/), own dev server on :3100
+npm run build                           # next build; may read the database while prerendering
+npx prettier --check <changed files>    # never `npm run format`, which rewrites everything
 ```
 
 `npm run dev` runs the app. It needs `.env` (`POSTGRES_URL`, `AUTH_SECRET`,
 `AUTH_URL`), and `POSTGRES_URL` is the project's only database — real data, no
 test copy.
 
-There is no CI (no `.github/workflows/`).
+CI (`.github/workflows/ci.yml`) runs three jobs on every push and pull request:
+lint + type check + unit tests; the build (with the `POSTGRES_URL` repository
+secret on that step only) followed by the browser tests against `next start`;
+and the browser tests against `next dev`.
 
 ### Why rules aren't auto-loaded
 

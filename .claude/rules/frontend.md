@@ -132,27 +132,29 @@ Do not assume desktop-only behavior unless the product explicitly is desktop-onl
 
 After significant UI work:
 
-1. `npm run lint` and `npx tsc --noEmit`
-2. `npm run build`
-3. start the application — `npm run dev`
-4. inspect the actual rendered UI in a browser, at phone and desktop width
+1. `npm run lint` and `npx next typegen && npx tsc --noEmit`
+2. `npm test`, and `npm run test:e2e` with a Playwright test in `tests/e2e/`
+   that performs the interaction the change affects
+3. `npm run build`
+4. start the application — `npm run dev` — and inspect the rendered UI in a
+   browser, at phone and desktop width
 5. test important interactions
 
-There is no test suite here, so steps 3–5 are the only evidence a page works.
 Lint, type check and build prove the code compiles, not that anything renders
-correctly, and none of them are UI evidence.
+correctly, and none of them are UI evidence. A Playwright test proves an
+interaction works; it does not prove the page looks right.
 
 **Step 5 touches real data.** The app's only database is the one in `.env`;
 creating, editing or deleting an invoice in the browser changes it for real.
-Test mutations deliberately, and undo what you created.
+Test mutations deliberately, and undo what you created. Browser tests never
+submit a writing form.
 
 ### Unattended: nobody can look
 
-There is no browser tool installed (no Playwright), and adding one is a
-dependency decision a human makes. So an unattended UI change is verified only
-by steps 1–2 and a reviewer's reading. Report it as **built, not seen**, name
-what a human should check, and never imply the UI was looked at. Primarily
-visual changes are poor unattended work for that reason.
+An unattended UI change is verified by steps 1–3 and a reviewer's reading, with
+a browser test standing in for step 5. Report it as **tested in a browser, not
+seen**, name what a human should look at, and never imply the UI was looked at.
+Primarily visual changes are weak unattended work for that reason.
 
 ---
 

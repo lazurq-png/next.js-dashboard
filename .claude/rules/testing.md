@@ -2,12 +2,13 @@
 
 Tests provide the feedback loop that allows coding agents to work autonomously. Open this when planning coverage or triaging test failures.
 
-**This repository has no test suite and no test runner.** The rules below
-describe what good coverage looks like once one exists. Until then, choosing and
-adding a runner (e.g. Vitest for `app/lib/`, Playwright for pages) is a
-dependency decision for a human (`AGENTS.md` §8), not something a task does in
-passing. Meanwhile, say plainly in every completion report that behaviour was
-checked by lint, type check, build and reading only.
+**In this repository:** unit tests use Vitest (`npm test`, `tests/unit/`,
+Node environment, `TZ=UTC`); browser tests use Playwright with Chromium
+(`npm run test:e2e`, `tests/e2e/`), which starts its own `next dev` on port
+`3100`, or `next start` over an existing build with `E2E_SERVER=start`. Test logic that does not need the database in `tests/unit/` by importing
+modules that do not open a connection (`app/lib/schemas.ts`, not
+`app/lib/actions.ts`). Browser tests cover pages that do not read the database
+and never submit a form that writes: the project has only its real database.
 
 ---
 

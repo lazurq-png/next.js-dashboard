@@ -238,7 +238,9 @@ In this repository the checks that exist are:
 | Check      | Command                                          |
 | ---------- | ------------------------------------------------ |
 | Lint       | `npm run lint` (ESLint 9, `eslint-config-next` core-web-vitals) |
-| Type check | `npx tsc --noEmit`                               |
+| Type check | `npx next typegen && npx tsc --noEmit`           |
+| Unit tests | `npm test` (Vitest, `tests/unit/`)               |
+| Browser tests | `npm run test:e2e` (Playwright + Chromium, `tests/e2e/`) |
 | Build      | `npm run build`                                  |
 | Format     | `npx prettier --check <the files you changed>`   |
 | Browser    | `npm run dev`, then open `http://localhost:3000` |
@@ -246,11 +248,21 @@ In this repository the checks that exist are:
 Use **npm**: the lockfile is `package-lock.json`. The `pnpm` block in
 `package.json` is a leftover and nothing reads it. Node is not on `PATH`; prefix
 commands as the global `CLAUDE.md` describes. Every check needs `node_modules`,
-installed with `npm ci`.
+installed with `npm ci`; the browser tests also need Chromium
+(`npx playwright install chromium`).
 
-**There is no test suite and no test runner.** Do not claim to have run tests.
-Adding one (Vitest, Playwright) is a dependency decision (`AGENTS.md` §8), not a
-side effect of a task.
+Run `next typegen` before `tsc`: `tsconfig.json` includes the route types Next
+generates under `.next/`, and stale ones (from a build before a route was
+deleted) fail the type check for no reason in the code.
+
+`npm run test:e2e` starts its own `next dev` on port 3100 with a throwaway
+`AUTH_SECRET`, so it needs no `.env` for pages that do not read the database.
+`E2E_SERVER=start npm run test:e2e` runs the same tests against `next start`
+instead, which needs an existing `npm run build`.
+Browser tests must never submit a form that runs a writing Server Action: there
+is only the real database. `next dev` also (re-)adds a Next.js agent-rules block
+to `AGENTS.md` when it detects an AI agent, and flips `next-env.d.ts` between
+its dev and build variants; neither is part of a task's change.
 
 `lint` exits non-zero on **errors only**; warnings print without failing, so a
 clean exit does not mean an empty report. Read the output; do not report "lint
@@ -268,8 +280,15 @@ or test copy. Opening a page reads it; submitting any form runs a Server Action
 that writes to it. Treat a browser check that submits a form as a change to real
 data.
 
-There is **no CI** yet (no `.github/workflows/`). When there is, it runs on
-GitHub, not on your machine: never report a CI result you have not observed.
+**CI** (`.github/workflows/ci.yml`) runs on every push and pull request, in
+three jobs: *checks* (lint, type check, unit tests); *build* — `npm run build`
+with the `POSTGRES_URL` repository secret scoped to that step, then the browser
+tests against `next start` (`E2E_SERVER=start`); and *e2e* — the browser tests
+against `next dev`. A red *build* job is therefore either a missing or wrong
+secret (the build step fails) or a browser test failing in production mode (the
+test step fails). Each job that starts Next makes its own throwaway
+`AUTH_SECRET`. It runs on GitHub, not on your machine: never
+report a CI result you have not observed.
 The one sanctioned way to observe one is the night-run skill's read-only poll
 of the public Actions API for a commit that run pushed
 (`.claude/skills/night-run/SKILL.md` §2 step 6) — a narrow, documented case,
@@ -277,8 +296,9 @@ not licence to check CI any other way.
 
 A clean type check and build prove the code compiles, not that a page works.
 For UI changes run the app and look (`.claude/rules/frontend.md`). When running
-unattended there is nobody to look and no browser tool installed; say so rather
-than implying the page was seen.
+unattended there is nobody to look: a Playwright test that performs the changed
+interaction is the substitute, and still does not prove the page looks right.
+Say so rather than implying the page was seen.
 
 Start with the narrowest useful verification.
 

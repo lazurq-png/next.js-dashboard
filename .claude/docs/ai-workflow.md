@@ -318,15 +318,13 @@ Examples:
 
 **Hooks: none.** There is no `.claude/settings.json` (only `settings.example.json`, which is inert). Nothing is enforced at commit time, and an unattended run started with permissions bypassed ignores `settings.json` entirely even if one is added — see `.claude/skills/night-run/SKILL.md`.
 
-**CI: none.** There is no `.github/workflows/`, so nothing runs on push.
+**CI: yes.** `.github/workflows/ci.yml` runs on every push and pull request, in three jobs: lint + type check + unit tests; `npm run build` with the `POSTGRES_URL` repository secret scoped to that step (prerendering `/dashboard` queries the database), followed by the Playwright browser tests against `next start` (`E2E_SERVER=start`); and the browser tests against a `next dev` server, which run even when the build cannot. Each job generates a throwaway `AUTH_SECRET`. CI runs on GitHub; a local agent must never report its result without having observed it (the night-run skill's read-only poll is the one sanctioned way).
 
-Locally, verification is `npm run lint` (ESLint with `eslint-config-next`, failing on errors only), `npx tsc --noEmit`, `npm run build`, and `npx prettier --check` on the changed files, run separately. There is no test suite.
+Locally, verification is `npm run lint` (ESLint with `eslint-config-next`, failing on errors only), `npx next typegen && npx tsc --noEmit`, `npm test` (Vitest), `npm run test:e2e` (Playwright), `npm run build`, and `npx prettier --check` on the changed files, run separately.
 
-The deterministic requirements *not* mechanically enforced anywhere — the tools exist, but nothing runs them automatically:
+The deterministic requirements *not* mechanically enforced anywhere:
 
-* lint, type checking, the build
-* formatting
-* tests (no suite exists)
+* formatting (no CI job checks it)
 * secret detection
 
 Do not rely on an AI instruction for something that can be mechanically enforced. This matters most in unattended mode, where an instruction is the *only* thing standing between the agent and a destructive command.

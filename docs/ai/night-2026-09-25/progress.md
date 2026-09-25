@@ -110,3 +110,77 @@ choices: D2. Formatting check: D3.
   Node version in that range.
 - Covered by tests: the utils and schema behaviour above. Not covered (not in
   scope): the actions' database and redirect paths.
+
+## T2 — Browser tests and CI (`night-2026-09-25-t2-e2e-and-ci`)
+
+- Start: 2026-09-25 16:39, budget 14,919,030 tokens.
+- Base SHA: `a797385` (T1 merged).
+- T1 outcome: committed `a797385`, fast-forwarded onto `night-2026-09-25`,
+  both branches pushed; **pushed; no CI** (no workflow in that commit).
+
+### What the code does
+
+- `playwright.config.ts` (new): Chromium-only browser tests in `tests/e2e/`
+  against a test server on port 3100 — `next dev` by default, `next start` when
+  `E2E_SERVER=start` — started with a throwaway `AUTH_SECRET` and
+  `AUTH_TRUST_HOST=true`; retries and traces only on CI.
+- `tests/e2e/smoke.spec.ts` (new): the home page's "Log in" link is visible and
+  leads to `/login`; `/login` shows its heading, the Email and Password fields
+  (by label) and the log-in button; `/dashboard` without a session ends on
+  `/login`. No form is submitted.
+- `.github/workflows/ci.yml` (new): on every push and pull request, three jobs
+  on Node 24 with `permissions: contents: read` — *checks* (`npm ci`, lint,
+  `next typegen && tsc --noEmit`, `npm test`); *Build + browser tests
+  (production)* (`npm run build` with the `POSTGRES_URL` secret on that step
+  only, then Chromium and the browser tests against `next start`); *Browser
+  tests (dev server)*. Jobs that start Next make a masked throwaway
+  `AUTH_SECRET`. Playwright reports are uploaded on failure.
+- `package.json`: `test:e2e` → `playwright test`; dev dependency
+  `@playwright/test ^1.63.0`. `.gitignore`: Playwright output directories.
+- `AGENTS.md`: the Next.js agent-rules block `next dev` writes (D5).
+- Docs: `CLAUDE.md` §9 (checks table with unit and browser tests, typegen,
+  the e2e server, CI's three jobs), `.claude/README.md`,
+  `.claude/docs/ai-workflow.md`, and `.claude/rules/testing.md` /
+  `frontend.md`, whose "no test suite / no Playwright" statements had become false.
+
+### Why it was added
+
+Plan task 2; the goal requires "browser tests and CI that prove all of this",
+and from this commit `npm run test:e2e` is part of the gate and CI runs on every
+pushed task branch (the run polls it). Dev versus production server and the job
+split: D4. The `AGENTS.md` block: D5. `next-env.d.ts`: D6.
+
+### Verification
+
+- `npm run test:e2e` → exit 0, **3 passed** (~7 s once warm; 23 s cold).
+  Before the throwaway secret, the dev server logged `MissingSecret` (local
+  `.env` has no `AUTH_SECRET`, Q2 addendum); after, none.
+- Negative control on the redirect test **not run**: temporarily making
+  `auth.config.ts` let visitors without a session into `/dashboard` was
+  refused by the session's auto-mode classifier ("Security Weaken"). The edit
+  was reversed at once; `git diff --exit-code auth.config.ts` confirmed it
+  identical to HEAD. The redirect test is therefore unproven against a broken
+  callback.
+- actionlint 1.7.12 with shellcheck and pyflakes on `.github/workflows/` → exit 0.
+- `npm test` → 27 passed. `npm run lint` → exit 0, same as baseline.
+  `npx next typegen && npx tsc --noEmit` → exit 0.
+- Prettier (LF-normalised): all new files, `package.json`, `.gitignore`,
+  `frontend.md`, `testing.md` pass; `CLAUDE.md`, `.claude/README.md` and
+  `ai-workflow.md` were already unformatted on the base (D3).
+- `npm audit` → 0 vulnerabilities. Chromium Headless Shell 153 installed with
+  `npx playwright install chromium`.
+- `next start` could not be run locally (no build: database unreachable, Q2);
+  it runs only in CI.
+- Reviewer, first pass: **Request Changes** — (1) browser tests only against
+  `next dev`, never the production build the plan's `next start` implies;
+  (2) `POSTGRES_URL` visible to every step of the build job, including
+  `npm ci`'s install scripts. Both fixed as the reviewer recommended (D4):
+  production browser tests after the build, and the secret scoped to the build
+  step. Re-verified: actionlint, tsc, lint, e2e (3 passed) all exit 0.
+- Reviewer, re-review: both findings **resolved**; one new low finding — the
+  docs (`CLAUDE.md` §9, `.claude/README.md`, `ai-workflow.md`, `testing.md`)
+  still described CI's browser tests as `next dev` only. Fixed as recommended:
+  each now describes the build job's production browser tests, and `CLAUDE.md`
+  names `E2E_SERVER=start`. Docs-only change, so no third review.
+- Behaviour covered by tests: the three smoke paths above. Not covered: search,
+  pagination and the dashboard pages (they need a session and the database).

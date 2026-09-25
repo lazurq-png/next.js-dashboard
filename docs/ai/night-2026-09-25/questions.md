@@ -33,3 +33,27 @@ and the type check pass without them.
 - **Option A (recommended):** `npm install -D @types/node@^22.12` — types only,
   clears the warning, and allows the Vite plugins later if ever wanted.
 - **Option B:** leave it; the warning stays.
+
+Addendum (T2): `AUTH_SECRET` is missing locally too — `next dev` logged
+`MissingSecret` until the Playwright config supplied a throwaway one (D4). The
+running app needs a real one in `.env` for login to work.
+
+## Q4 — Add the `POSTGRES_URL` repository secret
+
+CI's *build* job reads `secrets.POSTGRES_URL` (plan task 2). Until it is set in
+GitHub → Settings → Secrets and variables → Actions, that job fails on every push
+with a connection error, while *checks* and *e2e* are unaffected (D4). The run
+records such failures as "CI failed: environment" and spends no repair cycles on
+them (SKILL.md §2 step 6).
+
+## Q5 — Stop tracking `next-env.d.ts`?
+
+It is already in `.gitignore`, but tracked, and `next dev` / `next build` keep
+rewriting it with different content (D6). Recommendation:
+`git rm --cached next-env.d.ts` and commit. The run does not, because removing a
+file from the repository is reserved for a human (§3).
+
+## Q6 — Keep the Next.js agent-rules block in `AGENTS.md`?
+
+Committed in T2 (D5). If you do not want it, delete the block and add
+`agentRules: false` to `next.config.ts`; otherwise `next dev` re-adds it.

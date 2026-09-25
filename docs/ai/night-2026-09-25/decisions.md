@@ -49,3 +49,48 @@ lines consistent and leaves the rest.
 `vitest.config` is `.mts` (plain `.ts` made Vite warn that ESM syntax was loaded
 as CommonJS); `"**/*.mts"` was added to `tsconfig.json`'s `include` so the type
 check still covers it.
+
+## D4 — Browser tests run against `next dev` on port 3100; CI is three jobs (T2)
+
+The plan's CI note mentions `next start`, which needs `next build`, and the build
+prerenders `/dashboard` from the database. Locally the database is unreachable
+(Q2), and in CI it depends on a secret the human may not have set yet (Q4). Tying
+the browser tests to the build would mean no browser test runs anywhere until
+both are fixed. So Playwright's `webServer` is `next dev --turbopack -p 3100`:
+no build needed, and the pages under test read no database (plan: "browser tests
+... need no login and no database"). Port 3100 avoids reusing a developer's own
+`npm run dev` on 3000.
+
+CI is split into three jobs so a missing `POSTGRES_URL` fails only *build*, and
+the poll can tell an environment failure from a code failure by job name
+(SKILL.md §2 step 6): *checks* (lint, `next typegen && tsc`, `npm test`),
+*build* ("Build + browser tests (production)": `npm run build` with the
+`POSTGRES_URL` secret scoped to that step alone, then the browser tests against
+`next start` via `E2E_SERVER=start`), and *e2e* ("Browser tests (dev server)").
+Every command the plan lists runs on every push, and the plan's `next start` is
+tested wherever the build succeeds; the dev-server job keeps browser tests
+running while the secret is missing. (Reviewer finding 1 asked for exactly this
+as option (b); finding 2 asked for the step-scoped secret.) Each job that starts Next generates its own masked throwaway
+`AUTH_SECRET` and sets `AUTH_TRUST_HOST=true`; locally, `playwright.config.ts`
+does the same for its test server. Node 24 in CI satisfies jsdom 30's engines
+(reviewer note on T1).
+
+## D5 — The Next.js agent-rules block in `AGENTS.md` is committed (T2)
+
+Running `next dev` (the e2e server) appended a `nextjs-agent-rules` block to
+`AGENTS.md`. Verified in `node_modules/next/dist/server/lib/generate-agent-files.js`
+and `app-info-log.js` (`ensureAgentRulesForDev`): Next 16 writes it whenever it
+detects an AI agent, and rewrites it if removed. It tells agents to read the
+Next.js docs bundled in `node_modules/next/dist/docs/` because this version
+differs from their training data — sound advice this run will follow. Committing
+it keeps the tree stable across e2e runs; `agentRules: false` in `next.config`
+would switch it off (Q6).
+
+## D6 — `next-env.d.ts` is restored before each commit, not committed (T2)
+
+`next dev` rewrites `next-env.d.ts` to import `.next/dev/types/...`; `next build`
+and `next typegen` write the `.next/types/...` variant. It is listed in
+`.gitignore` but still tracked, so every e2e run leaves it modified. It is not
+part of any task's change, so the run restores it (`git restore -- next-env.d.ts`)
+before committing. Untracking it is a deletion from the repository, which §3
+reserves for a human (Q5).
