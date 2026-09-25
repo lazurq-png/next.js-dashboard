@@ -11,6 +11,12 @@ export type XenocatCursor = {
   attack(effect: Effect, cat: Vec): boolean;
   /** True while an effect runs (and clicks are blocked). */
   isBusy(): boolean;
+  /** Where the fake cursor is, or null before the pointer has been seen. */
+  position(): Vec | null;
+  /** False while the pointer is outside the page; nobody would see an attack. */
+  isPresent(): boolean;
+  /** The clock the cursor runs on; cats use the same one. */
+  now(): number;
   /** The page's one seeded random source, shared with the cats. */
   random: Random;
 };
@@ -176,6 +182,9 @@ export function XenocatCursorProvider({
     () => ({
       attack: (effect, cat) => controller.attack(effect, cat, nowRef.current()),
       isBusy: () => controller.isBlocking(nowRef.current()),
+      position: () => controller.position(),
+      isPresent: () => controller.isPresent(),
+      now: () => nowRef.current(),
       random,
     }),
     [controller, random]

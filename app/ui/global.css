@@ -8,6 +8,157 @@ html.xenocat-cursor-hidden * {
   cursor: none !important;
 }
 
+/* Xenocats (app/ui/xenocats/cat-layer.tsx). The one-shot animations (arrival, waking,
+   pounce, departure) get their duration inline from the cat type or config.ts; the
+   durations written here are only fallbacks. The loops (glow, breathing, z's,
+   wobble) are decorative and keep their own. */
+
+.xenocat-glow {
+  animation: xenocat-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes xenocat-glow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Asleep: the body breathes and z's drift up. */
+.xenocat-sleeping .xenocat-body {
+  animation: xenocat-breathe 3.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+@keyframes xenocat-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.03, 1.07);
+  }
+}
+
+.xenocat-z {
+  position: absolute;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  font:
+    700 13px/1 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  animation: xenocat-z 2.4s ease-out infinite;
+}
+
+@keyframes xenocat-z {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(14px, -26px) scale(1.25);
+  }
+}
+
+/* Waking: a stretch. Ready: a twitchy wobble while it waits its turn. */
+.xenocat-waking {
+  animation: xenocat-stretch 0.9s ease-in-out both;
+  transform-origin: 50% 100%;
+}
+
+@keyframes xenocat-stretch {
+  0% {
+    transform: scale(1, 1);
+  }
+  40% {
+    transform: scale(1.1, 0.88);
+  }
+  70% {
+    transform: translateY(-6px) scale(0.95, 1.07);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+.xenocat-ready {
+  animation: xenocat-wobble 0.45s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+@keyframes xenocat-wobble {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+/* Attacking: the pounce. */
+.xenocat-attacking {
+  animation: xenocat-pounce 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  transform-origin: 50% 100%;
+}
+
+@keyframes xenocat-pounce {
+  0% {
+    transform: none;
+  }
+  45% {
+    transform: translateY(-14px) scale(1.2);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* The default arrival and departure. Each cat type names its own pair. */
+.xenocat-enter-fade {
+  animation-name: xenocat-enter-fade;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes xenocat-enter-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.xenocat-exit-fade {
+  animation-name: xenocat-exit-fade;
+  animation-timing-function: ease-in;
+  animation-fill-mode: both;
+}
+
+@keyframes xenocat-exit-fade {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
 input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;

@@ -335,3 +335,82 @@ keyboard selection always pass; the provider takes a `seed` and exposes its one
   so a pointer press that never ends in a click can no longer swallow a later
   keyboard activation, and `pointercancel` clears the press flag; two tests
   added. `npm test` 87 passed; lint, typegen + tsc, test:e2e (3) green.
+
+## T5 — Cat engine (`night-2026-09-25-t5-cat-engine`)
+
+- Start: 2026-09-25 17:14, budget 14,748,365 tokens.
+- Base SHA: `57a832b` (T4 merged).
+- T4 outcome: committed `57a832b`, fast-forwarded, both branches pushed; CI
+  poll started (pending).
+- **T4 CI outcome: CI passed** — `night-2026-09-25-t4-cursor-engine`
+  https://github.com/lazurq-png/next.js-dashboard/actions/runs/36152664201,
+  `night-2026-09-25` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36152668905.
+
+### What the code does
+
+- `app/ui/xenocats/config.ts` (new): every cat timing and size in one place —
+  max 5 cats, 72 px cats, 8 px margin, 140 px kept clear of the cursor, first
+  spawn after 3–7 s, then every 7–16 s, sleep 8–22 s, wake 0.9 s, pounce 0.6 s.
+- `app/ui/xenocats/cat-types.ts` (new): the `CatType` roster entry — number,
+  name, effect, palette, named entrance/exit with durations — and cats 1–3
+  (Void Tabby/vanish, Gravi Coon/heavy, Pulsar Siamese/knockback) with the
+  default `fade` entrance and exit.
+- `app/ui/xenocats/cat-engine.ts` (new): the pure lifecycle and spawner.
+  appearing → sleeping → waking → ready → attacking → leaving → removed, caught
+  up through every elapsed phase on each tick. `ready` retries the attack every
+  tick until the cursor accepts it (one effect at a time). A summoned cat skips
+  sleep and wake. Spawns and summons refuse at 5 cats on screen (any phase),
+  and place cats fully on screen, 140 px from the cursor and not on another cat.
+- `app/ui/xenocats/cat-sprite.tsx` (new): a parameterised alien-cat SVG in an
+  awake pose (antenna, glowing slit eyes, stripes, tail) and a curled sleeping
+  pose (closed eyes, drooping antenna, tail wrapped round).
+- `app/ui/xenocats/cat-layer.tsx` (new, client): `XenocatCatsProvider` runs the
+  engine on the cursor's clock, random source and position in an animation-
+  frame loop that re-renders only when something changed; draws cats in an
+  `aria-hidden`, `pointer-events: none` layer below the fake cursor; sleeping
+  cats show three drifting z's; `useXenocats().summon(typeId)` for the /cats
+  page. With no cursor (touch screens) a cat pounces at nothing and leaves.
+- `app/ui/global.css`: keyframes for glowing eyes, breathing, drifting z's, the
+  waking stretch, the ready wobble, the pounce, and the default fade entrance
+  and exit.
+- `fake-cursor.tsx` / `cursor-controller.ts`: the cursor API gains `position()`
+  and `now()` so the cats share its clock and stay off it.
+- `app/dashboard/layout.tsx`: mounts the cats inside the cursor provider.
+- Tests (new): engine (the spawner never exceeds 5 while cats wait; a sixth
+  summon refused; leaving cats count; the full lifecycle order; sleep length in
+  range; summons skip sleep; attack gets the cat's centre; one effect at a time
+  — a second cat waits `ready` until the first effect ends; placement rules;
+  deterministic by seed; tiny viewport; unknown type), roster, and the layer in
+  jsdom (drawn and aria-hidden, max 5, unknown type, a summoned Void Tabby
+  really starts `vanish` on the fake cursor, a sleeping cat shows its z's).
+
+### Why it was added
+
+Plan task 5; the goal's cats "drift onto the screen, curl up and sleep, and
+every so often one wakes up and attacks the mouse pointer", "never more than 5
+cats on screen at once". Timings live in one module as the plan asks; per-type
+art and animations come in T7–T9 on top of this roster shape.
+
+### Verification
+
+- `npm test` → exit 0, 11 files, **108 passed** (21 new).
+- Negative control: `cats.length >= maxCats` loosened to `>` → the four max-5
+  tests failed (spawner, sixth summon, leaving cats, layer); restored from a
+  copy of my own file and green again.
+- `npm run lint` → exit 0. `npx next typegen && npx tsc --noEmit` → exit 0.
+  `npm run test:e2e` → 3 passed. Prettier (LF-normalised) clean on all
+  xenocats files and `global.css`.
+- Not verified in a real browser: no page shows cats without a login yet (T6's
+  /cats will); the animations are checked by reading and jsdom only.
+- Reviewer, pass 1: **Approve**, with four low findings, all fixed as
+  recommended: (1) a ready cat now *waits* while the pointer is off the page
+  (new `isPresent()` on the cursor) instead of starting a click-blocking effect
+  nobody sees; (2) the waking and pounce animations take their duration from
+  `config.wakeMs` / `config.attackMs`; (3) the overlap check is a box test (the
+  old centre-distance rule let squares overlap diagonally — restoring it fails
+  the new 60-seed placement test at seed 8); (4) new tests: one-tick catch-up
+  over a 100 s gap, two cats against the real cursor (only one attacks), and a
+  cat waiting while the pointer is away. `npm test` 111 passed; lint, tsc,
+  test:e2e (3), Prettier green.
+- Reviewer, pass 2: **Approve** — all four fixes confirmed; its optional note
+  applied (the `global.css` comment now says the CSS durations are fallbacks).

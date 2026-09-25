@@ -89,6 +89,16 @@ export function createCursorController(options: { viewport: Size; random?: Rando
       return isActive(now);
     },
 
+    /** Where the fake cursor was last drawn, or null before the pointer has been seen. */
+    position(): Vec | null {
+      return real ? { x: look.x, y: look.y } : null;
+    },
+
+    /** False while the pointer is outside the page (or the window is unfocused). */
+    isPresent(): boolean {
+      return present;
+    },
+
     activeEffectId(now: number): string | null {
       return isActive(now) ? attack!.effect.id : null;
     },
