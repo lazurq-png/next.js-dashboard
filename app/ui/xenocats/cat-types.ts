@@ -2,17 +2,26 @@
 // arriving and leaving. Entrances and exits name CSS animations in global.css
 // (`xenocat-enter-<name>` / `xenocat-exit-<name>`).
 
-import { type Effect, heavy, knockback, vanish } from './effects';
+import { type Effect, drift, freeze, heavy, jitter, knockback, reverse, vanish } from './effects';
 
 export type CatPalette = {
   /** Fur. */
   body: string;
   /** Belly, inner ears and muzzle. */
   belly: string;
-  /** Eyes and the antenna's glowing tip. */
+  /** Eyes, antenna tips and some markings. */
   glow: string;
-  /** Stripes, spots and outline accents. */
+  /** Stripes, points, patches and outline accents. */
   accent: string;
+};
+
+/** What the shared sprite draws for this cat (cat-sprite.tsx). */
+export type CatLook = {
+  build: 'sleek' | 'fluffy' | 'stocky';
+  ears: 'pointed' | 'tufted' | 'folded' | 'big';
+  pattern: 'none' | 'stripes' | 'patches' | 'points' | 'wrinkles' | 'frost' | 'stars';
+  antenna: 'single' | 'double' | 'orb' | 'zigzag';
+  eyes: 'slit' | 'round' | 'three';
 };
 
 export type CatType = {
@@ -22,6 +31,7 @@ export type CatType = {
   name: string;
   effect: Effect;
   palette: CatPalette;
+  look: CatLook;
   /** How it arrives: `xenocat-enter-<entrance>`. */
   entrance: string;
   entranceMs: number;
@@ -36,22 +46,24 @@ export const CAT_TYPES: readonly CatType[] = [
     number: 1,
     name: 'Void Tabby',
     effect: vanish,
-    palette: { body: '#3b3552', belly: '#6d6590', glow: '#a78bfa', accent: '#1e1b2e' },
-    entrance: 'fade',
-    entranceMs: 800,
-    exit: 'fade',
-    exitMs: 600,
+    palette: { body: '#3b3552', belly: '#6d6590', glow: '#a78bfa', accent: '#16131f' },
+    look: { build: 'sleek', ears: 'pointed', pattern: 'stripes', antenna: 'single', eyes: 'slit' },
+    entrance: 'black-hole',
+    entranceMs: 1000,
+    exit: 'collapse',
+    exitMs: 700,
   },
   {
     id: 'gravi-coon',
     number: 2,
     name: 'Gravi Coon',
     effect: heavy,
-    palette: { body: '#8a6d4b', belly: '#d9c2a0', glow: '#fbbf24', accent: '#4a3826' },
-    entrance: 'fade',
-    entranceMs: 800,
-    exit: 'fade',
-    exitMs: 600,
+    palette: { body: '#8a6d4b', belly: '#d9c2a0', glow: '#fbbf24', accent: '#3f2f1f' },
+    look: { build: 'fluffy', ears: 'tufted', pattern: 'stripes', antenna: 'double', eyes: 'round' },
+    entrance: 'thud',
+    entranceMs: 900,
+    exit: 'sink',
+    exitMs: 800,
   },
   {
     id: 'pulsar-siamese',
@@ -59,10 +71,59 @@ export const CAT_TYPES: readonly CatType[] = [
     name: 'Pulsar Siamese',
     effect: knockback,
     palette: { body: '#efe6d8', belly: '#fffaf2', glow: '#38bdf8', accent: '#5b4636' },
-    entrance: 'fade',
+    look: { build: 'sleek', ears: 'big', pattern: 'points', antenna: 'orb', eyes: 'slit' },
+    entrance: 'pulse',
     entranceMs: 800,
-    exit: 'fade',
+    exit: 'pulse-out',
     exitMs: 600,
+  },
+  {
+    id: 'mirror-sphynx',
+    number: 4,
+    name: 'Mirror Sphynx',
+    effect: reverse,
+    palette: { body: '#e8c9c1', belly: '#f7e3de', glow: '#c4b5fd', accent: '#8b6f68' },
+    look: { build: 'sleek', ears: 'big', pattern: 'wrinkles', antenna: 'single', eyes: 'round' },
+    entrance: 'mirror',
+    entranceMs: 900,
+    exit: 'shatter',
+    exitMs: 700,
+  },
+  {
+    id: 'static-calico',
+    number: 5,
+    name: 'Static Calico',
+    effect: jitter,
+    palette: { body: '#f5f0e6', belly: '#ffffff', glow: '#f59e0b', accent: '#262626' },
+    look: { build: 'stocky', ears: 'pointed', pattern: 'patches', antenna: 'zigzag', eyes: 'slit' },
+    entrance: 'static',
+    entranceMs: 800,
+    exit: 'static-out',
+    exitMs: 700,
+  },
+  {
+    id: 'cryo-persian',
+    number: 6,
+    name: 'Cryo Persian',
+    effect: freeze,
+    palette: { body: '#dbeafe', belly: '#f8fafc', glow: '#22d3ee', accent: '#3b82f6' },
+    look: { build: 'fluffy', ears: 'folded', pattern: 'frost', antenna: 'orb', eyes: 'round' },
+    entrance: 'crystal',
+    entranceMs: 1000,
+    exit: 'melt',
+    exitMs: 900,
+  },
+  {
+    id: 'nebula-ragdoll',
+    number: 7,
+    name: 'Nebula Ragdoll',
+    effect: drift,
+    palette: { body: '#4c3d75', belly: '#a78bda', glow: '#f0abfc', accent: '#2a1f47' },
+    look: { build: 'fluffy', ears: 'pointed', pattern: 'stars', antenna: 'single', eyes: 'three' },
+    entrance: 'condense',
+    entranceMs: 1100,
+    exit: 'dissipate',
+    exitMs: 900,
   },
 ];
 

@@ -2,14 +2,22 @@ import { describe, expect, it } from 'vitest';
 import {
   type Effect,
   type EffectInput,
+  DRIFT_PX_PER_S,
   HEAVY_SPEED,
+  ICE,
+  JITTER_PX,
+  JITTER_STEP_MS,
   KNOCKBACK_DISTANCE,
   KNOCKBACK_FLIGHT_MS,
   clampToViewport,
   direction,
+  drift,
+  freeze,
   heavy,
+  jitter,
   knockback,
   restingLook,
+  reverse,
   vanish,
 } from '@/app/ui/xenocats/effects';
 
@@ -134,8 +142,108 @@ describe('knockback', () => {
 });
 
 describe('every effect', () => {
-  it.each([vanish, heavy, knockback])('$id lasts between 0 and 10 seconds', (effect) => {
-    expect(effect.durationMs).toBeGreaterThan(0);
-    expect(effect.durationMs).toBeLessThanOrEqual(10_000);
+  it.each([vanish, heavy, knockback, reverse, jitter, freeze, drift])(
+    '$id lasts between 0 and 10 seconds',
+    (effect) => {
+      expect(effect.durationMs).toBeGreaterThan(0);
+      expect(effect.durationMs).toBeLessThanOrEqual(10_000);
+    }
+  );
+});
+
+describe('reverse', () => {
+  it('moves the cursor opposite to the pointer, for 4 seconds', () => {
+    expect(reverse.durationMs).toBe(4000);
+    const look = lookOf(reverse, {
+      previous: restingLook({ x: 500, y: 400 }),
+      delta: { x: 30, y: -20 },
+    });
+    expect(look).toMatchObject({ x: 470, y: 420, visible: true });
+  });
+
+  it('stays on screen', () => {
+    const look = lookOf(reverse, {
+      previous: restingLook({ x: 5, y: 5 }),
+      delta: { x: 50, y: 50 },
+    });
+    expect(look).toMatchObject({ x: 0, y: 0 });
+  });
+});
+
+describe('jitter', () => {
+  it('is the roster’s ±15 px', () => {
+    expect(JITTER_PX).toBe(15);
+  });
+
+  it('really shakes: offsets reach well out towards 15 px', () => {
+    let largest = 0;
+    for (let elapsed = 0; elapsed < 4000; elapsed += JITTER_STEP_MS) {
+      const look = lookOf(jitter, { elapsed, roll: 0.37 });
+      largest = Math.max(largest, Math.abs(look.x - 500), Math.abs(look.y - 400));
+    }
+    expect(largest).toBeGreaterThan(10);
+  });
+
+  it('shakes the cursor within ±15 px of the pointer, for 4 seconds', () => {
+    expect(jitter.durationMs).toBe(4000);
+    const offsets = new Set<string>();
+    for (let elapsed = 0; elapsed < 4000; elapsed += 16) {
+      const look = lookOf(jitter, { elapsed, roll: 0.37 });
+      expect(Math.abs(look.x - 500)).toBeLessThanOrEqual(JITTER_PX);
+      expect(Math.abs(look.y - 400)).toBeLessThanOrEqual(JITTER_PX);
+      offsets.add(`${look.x.toFixed(2)},${look.y.toFixed(2)}`);
+    }
+    // A new offset every 40 ms: about 100 distinct positions over 4 s.
+    expect(offsets.size).toBeGreaterThan(80);
+  });
+
+  it('is the same for the same moment of the same attack, whatever the frame rate', () => {
+    const a = lookOf(jitter, { elapsed: 1234, roll: 0.5 });
+    const b = lookOf(jitter, { elapsed: 1234, roll: 0.5 });
+    const sameSlot = lookOf(jitter, {
+      elapsed: 1234 + (JITTER_STEP_MS - (1234 % JITTER_STEP_MS)) - 1,
+      roll: 0.5,
+    });
+    expect(a).toEqual(b);
+    expect(sameSlot).toEqual(a);
+    expect(lookOf(jitter, { elapsed: 1234, roll: 0.51 })).not.toEqual(a);
+  });
+});
+
+describe('freeze', () => {
+  it('holds the cursor where the pointer was when the attack began, iced over, for 2.5 s', () => {
+    expect(freeze.durationMs).toBe(2500);
+    const look = lookOf(freeze, {
+      real: { x: 700, y: 100 },
+      start: { x: 500, y: 400 },
+      elapsed: 2000,
+    });
+    expect(look).toMatchObject({ x: 500, y: 400, visible: true, tint: ICE });
+  });
+});
+
+describe('drift', () => {
+  it('drifts at 110 px per second', () => {
+    expect(DRIFT_PX_PER_S).toBe(110);
+  });
+
+  it('pushes the cursor steadily in one direction, for 5 seconds', () => {
+    expect(drift.durationMs).toBe(5000);
+    // roll 0 → angle 0 → to the right.
+    const at = (elapsed: number) => lookOf(drift, { elapsed, roll: 0 });
+    expect(at(0).x).toBeCloseTo(500);
+    expect(at(1000).x).toBeCloseTo(500 + DRIFT_PX_PER_S);
+    expect(at(2000).x).toBeCloseTo(500 + 2 * DRIFT_PX_PER_S);
+    expect(at(2000).y).toBeCloseTo(400);
+  });
+
+  it('keeps the pointer’s own movement on top of the drift', () => {
+    const look = lookOf(drift, { real: { x: 520, y: 380 }, elapsed: 1000, roll: 0.25 });
+    expect(look.x).toBeCloseTo(520);
+    expect(look.y).toBeCloseTo(380 + DRIFT_PX_PER_S);
+  });
+
+  it('stops at the edge of the screen', () => {
+    expect(lookOf(drift, { elapsed: 5000, roll: 0 }).x).toBe(viewport.width - 1);
   });
 });

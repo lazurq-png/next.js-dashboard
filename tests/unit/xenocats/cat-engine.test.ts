@@ -5,9 +5,11 @@ import {
   type TryAttack,
   createCatEngine,
 } from '@/app/ui/xenocats/cat-engine';
-import { CAT_TYPES } from '@/app/ui/xenocats/cat-types';
+import { CAT_TYPES, catTypeById } from '@/app/ui/xenocats/cat-types';
 import { CAT_CONFIG } from '@/app/ui/xenocats/config';
 import { createRandom } from '@/app/ui/xenocats/random';
+
+const VOID_ENTRANCE_MS = catTypeById('void-tabby')!.entranceMs;
 
 const viewport = { width: 1200, height: 800 };
 const always: TryAttack = () => true;
@@ -60,7 +62,7 @@ describe('never more than five cats', () => {
     const e = engine();
     for (let i = 0; i < 5; i++) e.summon('void-tabby', 0, null);
     // All attack straight away and start leaving.
-    run(e, 0, 800 + CAT_CONFIG.attackMs + 10, always);
+    run(e, 0, VOID_ENTRANCE_MS + CAT_CONFIG.attackMs + 10, always);
     expect(e.cats().every((cat) => cat.phase === 'leaving')).toBe(true);
     expect(e.summon('void-tabby', 2000, null)).toBeNull();
   });
@@ -97,7 +99,7 @@ describe('lifecycle', () => {
     e.summon('void-tabby', 0, null);
     const cat = e.cats()[0] as Cat;
     cat.eager = false; // behave like a spawned cat
-    e.tick(800, null, always);
+    e.tick(VOID_ENTRANCE_MS, null, always);
     const slept = e.cats()[0].phaseEndsAt - e.cats()[0].phaseStartedAt;
     expect(slept).toBeGreaterThanOrEqual(CAT_CONFIG.sleepMs[0]);
     expect(slept).toBeLessThan(CAT_CONFIG.sleepMs[1]);

@@ -141,7 +141,12 @@ function CatView({ cat, type, config }: { cat: Cat; type: CatType; config: CatCo
         className={`xenocat-${cat.phase} h-full w-full`}
         style={innerMs === null ? undefined : { animationDuration: `${innerMs}ms` }}
       >
-        <CatSprite palette={type.palette} pose={asleep ? 'asleep' : 'awake'} size={size} />
+        <CatSprite
+          palette={type.palette}
+          look={type.look}
+          pose={asleep ? 'asleep' : 'awake'}
+          size={size}
+        />
       </div>
       {asleep && (
         <div className="absolute -top-1 right-1" style={{ color: type.palette.glow }}>

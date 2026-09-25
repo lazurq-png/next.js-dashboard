@@ -143,7 +143,7 @@ describe('XenocatCatsProvider', () => {
     clock = 10;
     await frames();
     expect(phases()).toEqual(['appearing']);
-    clock = 1000; // arrived; now asleep
+    clock = 3000; // every entrance is over, and no cat sleeps less than 8 s: asleep
     await frames();
     expect(phases()).toEqual(['sleeping']);
     expect(screen.getAllByText(/^z$/i)).toHaveLength(3);

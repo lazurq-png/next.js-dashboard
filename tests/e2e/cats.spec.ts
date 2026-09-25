@@ -125,3 +125,61 @@ test('an idle summoned cat never stays: it attacks, then leaves', async ({ page 
   await summon(page, 'void-tabby');
   await expect(page.getByTestId('xenocat')).toHaveCount(0, { timeout: 8000 });
 });
+
+const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.hypot(a.x - b.x, a.y - b.y);
+
+test('Mirror Sphynx reverses the cursor', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'mirror-sphynx');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'reverse');
+  const start = await cursorAt(page);
+  // The real pointer goes 120 px right and 60 px down; the fake one goes left and up.
+  await page.mouse.move(pointer.x + 120, pointer.y + 60, { steps: 12 });
+  await expect
+    .poll(async () => {
+      const now = await cursorAt(page);
+      return now.x < start.x - 80 && now.y < start.y - 40;
+    })
+    .toBe(true);
+});
+
+test('Static Calico makes the cursor jitter around the pointer', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'static-calico');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'jitter');
+  const seen = new Set<string>();
+  for (let i = 0; i < 12; i++) {
+    const at = await cursorAt(page);
+    expect(Math.abs(at.x - pointer.x)).toBeLessThanOrEqual(16);
+    expect(Math.abs(at.y - pointer.y)).toBeLessThanOrEqual(16);
+    seen.add(`${at.x},${at.y}`);
+    await page.waitForTimeout(60);
+  }
+  // The pointer stood still, yet the cursor kept moving.
+  expect(seen.size).toBeGreaterThan(3);
+});
+
+test('Cryo Persian freezes the cursor in place, iced over', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'cryo-persian');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'freeze');
+  const frozen = await cursorAt(page);
+  expect(distance(frozen, pointer)).toBeLessThan(2);
+  await page.mouse.move(pointer.x + 150, pointer.y - 80, { steps: 10 });
+  await page.waitForTimeout(200);
+  expect(distance(await cursorAt(page), frozen)).toBeLessThan(2);
+  const filter = await fakeCursor(page).evaluate((el) => (el as HTMLElement).style.filter);
+  expect(filter).toContain('drop-shadow');
+});
+
+test('Nebula Ragdoll makes the cursor drift away while the pointer stands still', async ({
+  page,
+}) => {
+  await openCats(page);
+  const pointer = await summon(page, 'nebula-ragdoll');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'drift');
+  await expect
+    .poll(async () => distance(await cursorAt(page), pointer), { timeout: 3000 })
+    .toBeGreaterThan(80);
+});

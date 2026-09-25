@@ -146,7 +146,12 @@ export function XenocatCursorProvider({
       const time = nowRef.current();
       const look = controller.frame(time);
       const opacity = String(look.visible ? look.opacity : 0);
-      const filter = look.blur > 0 ? `blur(${look.blur}px)` : '';
+      const filter = [
+        look.blur > 0 ? `blur(${look.blur}px)` : '',
+        look.tint ? `drop-shadow(0 0 3px ${look.tint}) drop-shadow(0 0 6px ${look.tint})` : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
       const place = (element: HTMLElement, at: Vec) => {
         element.style.transform = `translate3d(${at.x}px, ${at.y}px, 0) scale(${look.scale})`;
         element.style.opacity = opacity;

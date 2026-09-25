@@ -49,7 +49,7 @@ function Roster() {
           >
             <div className="flex items-center gap-4">
               <div className="flex h-20 w-20 flex-none items-center justify-center rounded-lg bg-white">
-                <CatSprite palette={type.palette} pose="awake" size={64} />
+                <CatSprite palette={type.palette} look={type.look} pose="awake" size={64} />
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">

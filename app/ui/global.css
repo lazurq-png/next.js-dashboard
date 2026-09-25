@@ -173,3 +173,300 @@ input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/* Per-cat arrivals and departures (cat-types.ts). Class `xenocat-enter-<name>` /
+   `xenocat-exit-<name>`; the duration is set inline from the cat type. */
+
+[class*='xenocat-enter-'],
+[class*='xenocat-exit-'] {
+  animation-fill-mode: both;
+}
+
+/* 1 Void Tabby: a black hole opens and it steps out; collapses into a point. */
+.xenocat-enter-black-hole {
+  animation-name: xenocat-enter-black-hole;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes xenocat-enter-black-hole {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(-540deg);
+    filter: brightness(0) drop-shadow(0 0 0 #000);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(0.35) rotate(-180deg);
+    filter: brightness(0) drop-shadow(0 0 14px #1e1b2e);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.xenocat-exit-collapse {
+  animation-name: xenocat-exit-collapse;
+  animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.4);
+}
+@keyframes xenocat-exit-collapse {
+  from {
+    transform: none;
+    filter: none;
+  }
+  to {
+    opacity: 0.6;
+    transform: scale(0) rotate(540deg);
+    filter: brightness(0);
+  }
+}
+
+/* 2 Gravi Coon: drops from the top with a thud; sinks through the floor. */
+.xenocat-enter-thud {
+  animation-name: xenocat-enter-thud;
+  animation-timing-function: linear;
+  transform-origin: 50% 100%;
+}
+@keyframes xenocat-enter-thud {
+  0% {
+    opacity: 1;
+    transform: translateY(-110vh);
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
+  }
+  65% {
+    transform: translateY(0) scale(1.25, 0.7);
+  }
+  80% {
+    transform: translateY(-4px) scale(0.92, 1.08);
+  }
+  100% {
+    transform: none;
+  }
+}
+.xenocat-exit-sink {
+  animation-name: xenocat-exit-sink;
+  animation-timing-function: ease-in;
+}
+@keyframes xenocat-exit-sink {
+  from {
+    transform: none;
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    transform: translateY(100%);
+    clip-path: inset(0 0 100% 0);
+  }
+}
+
+/* 3 Pulsar Siamese: a pulse ring expands; pulses out. */
+.xenocat-enter-pulse,
+.xenocat-exit-pulse-out {
+  border-radius: 9999px;
+}
+.xenocat-enter-pulse {
+  animation-name: xenocat-enter-pulse;
+  animation-timing-function: ease-out;
+}
+@keyframes xenocat-enter-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.9);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    transform: none;
+    box-shadow: 0 0 0 40px rgba(56, 189, 248, 0);
+  }
+}
+.xenocat-exit-pulse-out {
+  animation-name: xenocat-exit-pulse-out;
+  animation-timing-function: ease-in;
+}
+@keyframes xenocat-exit-pulse-out {
+  0% {
+    transform: none;
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.9);
+  }
+  40% {
+    transform: scale(1.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+    box-shadow: 0 0 0 40px rgba(56, 189, 248, 0);
+  }
+}
+
+/* 4 Mirror Sphynx: steps out of a mirror shard; shatters. */
+.xenocat-enter-mirror {
+  animation-name: xenocat-enter-mirror;
+  animation-timing-function: ease-out;
+}
+@keyframes xenocat-enter-mirror {
+  0% {
+    opacity: 0;
+    transform: perspective(200px) rotateY(90deg) skewY(-12deg);
+    clip-path: polygon(40% 0, 60% 0, 55% 100%, 45% 100%);
+    filter: brightness(2) saturate(0);
+  }
+  60% {
+    opacity: 1;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  100% {
+    transform: none;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    filter: none;
+  }
+}
+.xenocat-exit-shatter {
+  animation-name: xenocat-exit-shatter;
+  animation-timing-function: steps(5, end);
+}
+@keyframes xenocat-exit-shatter {
+  0% {
+    clip-path: polygon(0 0, 50% 0, 100% 0, 100% 50%, 100% 100%, 50% 100%, 0 100%, 0 50%);
+    filter: none;
+  }
+  40% {
+    clip-path: polygon(0 0, 45% 10%, 100% 0, 90% 55%, 100% 100%, 50% 85%, 0 100%, 10% 45%);
+    filter: brightness(1.8) saturate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3) rotate(8deg);
+    clip-path: polygon(48% 48%, 50% 47%, 52% 48%, 53% 50%, 52% 52%, 50% 53%, 48% 52%, 47% 50%);
+  }
+}
+
+/* 5 Static Calico: TV-static flicker in; flicker out. */
+.xenocat-enter-static,
+.xenocat-exit-static-out {
+  animation-timing-function: steps(1, end);
+}
+.xenocat-enter-static {
+  animation-name: xenocat-enter-static;
+}
+@keyframes xenocat-enter-static {
+  0%,
+  20%,
+  45% {
+    opacity: 0;
+  }
+  10%,
+  30%,
+  55% {
+    opacity: 1;
+    transform: translateX(3px) skewX(10deg);
+    filter: contrast(3) grayscale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-2px);
+    filter: contrast(2) grayscale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.xenocat-exit-static-out {
+  animation-name: xenocat-exit-static-out;
+}
+@keyframes xenocat-exit-static-out {
+  0% {
+    opacity: 1;
+    filter: contrast(2) grayscale(0.6);
+  }
+  25%,
+  60% {
+    opacity: 0;
+  }
+  40%,
+  75% {
+    opacity: 1;
+    transform: translateX(-3px) skewX(-10deg);
+    filter: contrast(3) grayscale(1);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 6 Cryo Persian: an ice crystal grows; melts. */
+.xenocat-enter-crystal {
+  animation-name: xenocat-enter-crystal;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes xenocat-enter-crystal {
+  0% {
+    opacity: 0;
+    transform: scale(0.1) rotate(45deg);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    filter: hue-rotate(40deg) brightness(1.6) drop-shadow(0 0 10px #7dd3fc);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) rotate(0deg);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  }
+  100% {
+    transform: none;
+    clip-path: polygon(-20% -20%, 120% -20%, 120% 120%, -20% 120%);
+    filter: none;
+  }
+}
+.xenocat-exit-melt {
+  animation-name: xenocat-exit-melt;
+  animation-timing-function: ease-in;
+  transform-origin: 50% 100%;
+}
+@keyframes xenocat-exit-melt {
+  from {
+    transform: none;
+    filter: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.4, 0.1);
+    filter: blur(2px) hue-rotate(40deg);
+  }
+}
+
+/* 7 Nebula Ragdoll: condenses from a gas cloud; dissipates. */
+.xenocat-enter-condense {
+  animation-name: xenocat-enter-condense;
+  animation-timing-function: ease-out;
+}
+@keyframes xenocat-enter-condense {
+  from {
+    opacity: 0;
+    transform: scale(1.8) rotate(-20deg);
+    filter: blur(14px) saturate(2);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.xenocat-exit-dissipate {
+  animation-name: xenocat-exit-dissipate;
+  animation-timing-function: ease-in;
+}
+@keyframes xenocat-exit-dissipate {
+  from {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.8) rotate(20deg);
+    filter: blur(14px) saturate(2);
+  }
+}

@@ -4,8 +4,10 @@
 //
 // Every effect is a pure function of its input: no clock, no DOM, no Math.random.
 // Anything random derives from `roll` (in [0, 1)), fixed once per attack — an effect
-// that wants fresh numbers every frame seeds `createRandom` from it and keeps the
-// generator's output in its `state`.
+// that wants fresh numbers every frame seeds `createRandom` from it (with the moment,
+// or with what it keeps in its `state`).
+
+import { createRandom } from './random';
 
 export type Vec = { x: number; y: number };
 export type Size = { width: number; height: number };
@@ -21,6 +23,8 @@ export type CursorLook = {
   opacity: number;
   /** Extra, identical-looking cursors drawn at these points (at most MAX_DECOYS). */
   decoys?: Vec[];
+  /** A coloured glow round the cursor (e.g. ice), as a CSS colour. */
+  tint?: string;
 };
 
 export const MAX_DECOYS = 4;
@@ -133,6 +137,72 @@ export const knockback: Effect = {
     return {
       look: restingLook(
         clampToViewport({ x: real.x + away.x * distance, y: real.y + away.y * distance }, viewport)
+      ),
+    };
+  },
+};
+
+export const reverse: Effect = {
+  id: 'reverse',
+  name: 'Reverse',
+  description: 'Your cursor moves the opposite way for 4 seconds.',
+  durationMs: 4000,
+  step: ({ previous, delta, viewport }) => ({
+    look: restingLook(
+      clampToViewport({ x: previous.x - delta.x, y: previous.y - delta.y }, viewport)
+    ),
+  }),
+};
+
+export const JITTER_PX = 15;
+export const JITTER_STEP_MS = 40;
+
+export const jitter: Effect = {
+  id: 'jitter',
+  name: 'Jitter',
+  description: 'Your cursor shakes for 4 seconds.',
+  durationMs: 4000,
+  step: ({ real, elapsed, roll, viewport }) => {
+    // A new offset every JITTER_STEP_MS, the same for the same moment of the same
+    // attack: pure, and independent of the frame rate.
+    const slot = Math.floor(elapsed / JITTER_STEP_MS);
+    const random = createRandom(Math.floor(roll * 2 ** 31) ^ Math.imul(slot + 1, 0x9e3779b1));
+    const offset = {
+      x: random.range(-JITTER_PX, JITTER_PX),
+      y: random.range(-JITTER_PX, JITTER_PX),
+    };
+    return {
+      look: restingLook(clampToViewport({ x: real.x + offset.x, y: real.y + offset.y }, viewport)),
+    };
+  },
+};
+
+export const ICE = '#7dd3fc';
+
+export const freeze: Effect = {
+  id: 'freeze',
+  name: 'Freeze',
+  description: 'Your cursor is frozen in place for 2.5 seconds.',
+  durationMs: 2500,
+  step: ({ start }) => ({ look: { ...restingLook(start), tint: ICE } }),
+};
+
+export const DRIFT_PX_PER_S = 110;
+
+export const drift: Effect = {
+  id: 'drift',
+  name: 'Drift',
+  description: 'Your cursor is pushed steadily in one direction for 5 seconds.',
+  durationMs: 5000,
+  step: ({ real, elapsed, roll, viewport }) => {
+    const angle = roll * 2 * Math.PI;
+    const distance = (DRIFT_PX_PER_S * elapsed) / 1000;
+    return {
+      look: restingLook(
+        clampToViewport(
+          { x: real.x + Math.cos(angle) * distance, y: real.y + Math.sin(angle) * distance },
+          viewport
+        )
       ),
     };
   },

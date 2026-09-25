@@ -167,3 +167,15 @@ as it enabled (after hydration), but the fake cursor cannot be drawn until the
 pointer's position is known, so until the first mouse move there was no cursor
 on screen at all. The class that hides it is now added on the first
 `pointermove`. The browser tests nudge the mouse until the page has taken over.
+
+## D12 — Effect numbers live with their effect; engine timings in config.ts (T7)
+
+The plan says to tune "durations and distances" in "the config module". Engine
+timings (spawn, sleep, wake, pounce, sizes) are in `config.ts`; each attack's
+own duration and distance (3 s vanish, 30 % heavy, 300 px knockback, ±15 px
+jitter, 110 px/s drift, …) is an exported constant beside its effect in
+`effects.ts`, so an effect stays one self-contained, pure, testable unit, and
+the roster tests pin each constant to the plan's value. Entrance and exit
+lengths sit on each cat type in `cat-types.ts`. Values tuned from the plan's
+starting ones: drift speed (the plan gives no rate) chose 110 px/s; knockback's
+flight is 250 ms and it holds for 1.5 s in total.

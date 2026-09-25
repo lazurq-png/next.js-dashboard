@@ -539,3 +539,66 @@ design decision).
   three-cycle budget for T5 is at 2.
 - T6 re-verified on base `2f56578`: `npm test` 117, `npm run test:e2e` 9, lint,
   typegen + tsc green.
+
+## T7 — Cats 1–7 (`night-2026-09-25-t7-cats-1-7`)
+
+- Start: 2026-09-25 17:52, budget 14,603,102 tokens.
+- Base SHA: `5e40748` (T6 merged).
+- T6 outcome: committed `5e40748`, fast-forwarded, both branches pushed; CI
+  poll started (pending).
+- **T6 CI outcome: CI passed** — `night-2026-09-25-t6-cats-page`
+  https://github.com/lazurq-png/next.js-dashboard/actions/runs/36157232802,
+  `night-2026-09-25` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36157236469.
+
+### What the code does
+
+- `app/ui/xenocats/effects.ts`: four new effects — **reverse** (the fake cursor
+  moves opposite to the real movement on both axes, 4 s), **jitter** (a new
+  offset within ±15 px of the pointer every 40 ms, derived from the attack roll
+  and the moment, so it is pure and frame-rate independent; 4 s), **freeze**
+  (held where the pointer was when the attack began, with an ice-blue glow;
+  2.5 s), **drift** (pushed 110 px/s in one direction chosen by the roll, on top
+  of the pointer's own movement; 5 s). `CursorLook` gains an optional `tint`,
+  which the provider draws as a coloured glow.
+- `app/ui/xenocats/cat-types.ts`: a `CatLook` (build, ears, pattern, antenna,
+  eyes) per type, and cats 4–7 (Mirror Sphynx, Static Calico, Cryo Persian,
+  Nebula Ragdoll). Cats 1–7 each get their own look, palette, entrance and exit.
+- `app/ui/xenocats/cat-sprite.tsx`: the sprite is assembled from the look —
+  sleek/fluffy/stocky build; pointed/tufted/folded/big ears; stripes, patches,
+  colour points, wrinkles, frost crystals or stars; single/double/orb/zigzag
+  antennae; slit, round or three eyes — in both the awake and curled sleeping
+  poses.
+- `app/ui/global.css`: 14 per-type animations — black hole / collapse to a
+  point, thud from the top / sink through the floor, pulse ring / pulse out,
+  mirror shard / shatter, static flicker in / out, ice crystal / melt,
+  condense from a cloud / dissipate.
+- `cat-gallery.tsx`, `cat-layer.tsx`: pass each type's look to the sprite.
+- Tests: effects for reverse, jitter (range, variety, purity, frame-rate
+  independence), freeze and drift (rate, direction, pointer on top, edge); the
+  roster (plan order for cats 1–7; unique effect, look, entrance and exit per
+  cat; every entrance and exit exists as a class and `@keyframes` in
+  `global.css`); the sprite (every cat draws awake and asleep, all distinct,
+  sleeping differs from awake); e2e for cats 4–7 on /cats. Engine and layer
+  tests now read each type's entrance time instead of assuming 800 ms.
+- `docs/ai/night-2026-09-25/screenshots/t7-cats-gallery.png`: the /cats
+  gallery with the seven cats, for a human to look at.
+
+### Why it was added
+
+Plan task 7; the goal's cats are "hand-drawn SVG" and "each cat type has its own
+attack effect and its own way of appearing and disappearing".
+
+### Verification
+
+- `npm test` → 14 files, **146 passed**. `npm run test:e2e` → **13 passed**;
+  the cats spec ×3 → 30/30. `npm run lint` → 0. typegen + tsc → 0. Prettier
+  (LF-normalised) clean.
+- Looked at: a full-page screenshot of /cats (above) — seven distinct cats,
+  cards aligned. Not looked at: the entrance/exit animations and the sleeping
+  pose on the dashboard (no login here); they are checked by tests only.
+- Reviewer: **Approve**, three low findings, all fixed: the shatter exit's
+  clip polygons now all have 8 points (they snapped instead of morphing);
+  "sinks through the floor" moves the full cat height so the floor line stays
+  put; the jitter test pins `JITTER_PX` to 15 and requires offsets beyond 10 px,
+  and drift's rate is pinned to 110 px/s. Its note that effect numbers live in
+  `effects.ts` rather than `config.ts` is recorded as D12. `npm test` 149.
