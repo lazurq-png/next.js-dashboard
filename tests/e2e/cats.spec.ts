@@ -339,3 +339,108 @@ test('the stomp shake never moves the cats or the cursor, even on a scrolled pag
   expect(Math.abs(box.x - pointer.x)).toBeLessThan(40);
   expect(Math.abs(box.y - pointer.y)).toBeLessThan(40);
 });
+
+test('Lag Ragamuffin makes the cursor follow 0.8 s late', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'lag-ragamuffin');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'delay');
+  await page.waitForTimeout(900); // let the delay's own start settle
+  const target = { x: pointer.x + 220, y: pointer.y };
+  await page.mouse.move(target.x, target.y, { steps: 4 });
+  // Just after the move the cursor is still well behind...
+  expect(distance(await cursorAt(page), target)).toBeGreaterThan(120);
+  // ...and it catches up about 0.8 s later.
+  await expect
+    .poll(async () => distance(await cursorAt(page), target), { timeout: 2500 })
+    .toBeLessThan(10);
+});
+
+test('Gravity Manx makes the cursor sink', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'gravity-manx');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'fall');
+  await expect
+    .poll(async () => (await cursorAt(page)).y - pointer.y, { timeout: 2000 })
+    .toBeGreaterThan(100);
+  expect(Math.abs((await cursorAt(page)).x - pointer.x)).toBeLessThan(2);
+});
+
+test('Smoke Bombay blurs the cursor and makes it half-transparent', async ({ page }) => {
+  await openCats(page);
+  await summon(page, 'smoke-bombay');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'blur');
+  await expect(fakeCursor(page)).toHaveCSS('opacity', '0.5');
+  const filter = await fakeCursor(page).evaluate((el) => (el as HTMLElement).style.filter);
+  expect(filter).toContain('blur(4px)');
+});
+
+test('Hypno Rex spirals the cursor in to the middle of the screen', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'hypno-rex');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'spiral');
+  const size = page.viewportSize()!;
+  const centre = { x: size.width / 2, y: size.height / 2 };
+  const startDistance = distance(pointer, centre);
+  await expect
+    .poll(async () => distance(await cursorAt(page), centre), { timeout: 4500, intervals: [100] })
+    .toBeLessThan(Math.max(startDistance * 0.3, 20));
+});
+
+test('Pinball Devon sends the cursor bouncing around the screen', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'pinball-devon');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'bounce');
+  const size = page.viewportSize()!;
+  let furthest = 0;
+  for (let i = 0; i < 10; i++) {
+    const at = await cursorAt(page);
+    expect(at.x).toBeGreaterThanOrEqual(0);
+    expect(at.x).toBeLessThanOrEqual(size.width);
+    expect(at.y).toBeGreaterThanOrEqual(0);
+    expect(at.y).toBeLessThanOrEqual(size.height);
+    furthest = Math.max(furthest, distance(at, pointer));
+    await page.waitForTimeout(80);
+  }
+  expect(furthest).toBeGreaterThan(200);
+});
+
+test('Laser Ocicat locks the cursor to one axis', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'laser-ocicat');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'axis-lock');
+  const before = await cursorAt(page);
+  await page.mouse.move(pointer.x - 100, pointer.y - 80, { steps: 8 });
+  await expect
+    .poll(async () => {
+      const now = await cursorAt(page);
+      const dx = Math.abs(now.x - before.x);
+      const dy = Math.abs(now.y - before.y);
+      // One axis followed the pointer, the other stayed put.
+      return (dx > 80 && dy < 2) || (dy > 60 && dx < 2);
+    })
+    .toBe(true);
+});
+
+test('all 20 cats are on /cats, and a sixth summon is refused while five are on screen', async ({
+  page,
+}) => {
+  await openCats(page);
+  await expect(page.locator('[data-testid^="cat-card-"]')).toHaveCount(20);
+  // Summon with the keyboard: it is never blocked, even once the first cats attack.
+  // Lag Ragamuffin first: the first cat is the only one that attacks and leaves while
+  // the rest wait their turn, and its slow arrival and departure keep it on screen
+  // for about 4 s, so all five are still there when the sixth is summoned.
+  const ids = ['lag-ragamuffin', 'gravi-coon', 'munchkin-mite', 'smoke-bombay', 'laser-ocicat'];
+  for (const id of ids) {
+    await page.getByTestId(`summon-${id}`).focus();
+    await page.keyboard.press('Enter');
+  }
+  await expect(page.getByTestId('xenocat')).toHaveCount(5);
+  await page.getByTestId('summon-hypno-rex').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toHaveText(
+    'No room for another cat right now. Wait for one to leave.'
+  );
+  await expect(page.getByTestId('xenocat')).toHaveCount(5);
+  await expect(page.locator('[data-cat-type="hypno-rex"]')).toHaveCount(0);
+});

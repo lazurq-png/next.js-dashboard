@@ -378,3 +378,149 @@ export const giant: Effect = {
   durationMs: 5000,
   step: ({ real }) => ({ look: { ...restingLook(real), scale: GIANT_SCALE } }),
 };
+
+export const DELAY_MS = 800;
+
+type DelayState = { trail: { at: number; pos: Vec }[] };
+
+export const delay: Effect<DelayState> = {
+  id: 'delay',
+  name: 'Delay',
+  description: 'Your cursor follows you 0.8 seconds late for 5 seconds.',
+  durationMs: 5000,
+  step: ({ real, start, elapsed, state }) => {
+    // Remember where the pointer was; show where it was DELAY_MS ago.
+    const trail = [...(state?.trail ?? [{ at: 0, pos: start }]), { at: elapsed, pos: real }];
+    const target = elapsed - DELAY_MS;
+    let shown = trail[0].pos;
+    for (let i = trail.length - 1; i >= 0; i--) {
+      if (trail[i].at <= target) {
+        const next = trail[i + 1];
+        const from = trail[i];
+        shown =
+          next && next.at > from.at
+            ? {
+                x:
+                  from.pos.x +
+                  ((next.pos.x - from.pos.x) * (target - from.at)) / (next.at - from.at),
+                y:
+                  from.pos.y +
+                  ((next.pos.y - from.pos.y) * (target - from.at)) / (next.at - from.at),
+              }
+            : from.pos;
+        break;
+      }
+    }
+    // Keep only what can still be needed.
+    const keepFrom = trail.findIndex((point) => point.at > target) - 1;
+    return { look: restingLook(shown), state: { trail: trail.slice(Math.max(keepFrom, 0)) } };
+  },
+};
+
+export const FALL_PX_PER_S = 260;
+
+export const fall: Effect = {
+  id: 'fall',
+  name: 'Fall',
+  description: 'Your cursor sinks towards the bottom unless you keep moving up, for 4 seconds.',
+  durationMs: 4000,
+  step: ({ previous, delta, dt, viewport }) => ({
+    look: restingLook(
+      clampToViewport(
+        { x: previous.x + delta.x, y: previous.y + delta.y + (FALL_PX_PER_S * dt) / 1000 },
+        viewport
+      )
+    ),
+  }),
+};
+
+export const BLUR_PX = 4;
+
+export const blur: Effect = {
+  id: 'blur',
+  name: 'Blur',
+  description: 'Your cursor goes blurry and half-transparent for 5 seconds.',
+  durationMs: 5000,
+  step: ({ real }) => ({ look: { ...restingLook(real), blur: BLUR_PX, opacity: 0.5 } }),
+};
+
+export const SPIRAL_TURNS = 2;
+export const SPIRAL_MS = 4000;
+
+export const spiral: Effect = {
+  id: 'spiral',
+  name: 'Spiral',
+  description: 'Your cursor spirals in to the middle of the screen over 4 seconds.',
+  durationMs: SPIRAL_MS,
+  step: ({ start, elapsed, viewport }) => {
+    const centre = { x: viewport.width / 2, y: viewport.height / 2 };
+    const t = easeInOut(elapsed / SPIRAL_MS);
+    const reach = Math.hypot(start.x - centre.x, start.y - centre.y) * (1 - t);
+    const angle =
+      Math.atan2(start.y - centre.y, start.x - centre.x) + t * SPIRAL_TURNS * 2 * Math.PI;
+    return {
+      look: restingLook(
+        clampToViewport(
+          { x: centre.x + Math.cos(angle) * reach, y: centre.y + Math.sin(angle) * reach },
+          viewport
+        )
+      ),
+    };
+  },
+};
+
+export const BOUNCE_MIN_PX_PER_S = 700;
+
+type BounceState = { pos: Vec; velocity: Vec };
+
+export const bounce: Effect<BounceState> = {
+  id: 'bounce',
+  name: 'Bounce',
+  description: 'Your cursor flies off and bounces around the screen for 4 seconds.',
+  durationMs: 4000,
+  step: ({ real, cat, dt, viewport, roll, state }) => {
+    // Launched away from the cat, at least BOUNCE_MIN_PX_PER_S; after that it keeps
+    // its momentum and bounces off the screen's edges like a pinball.
+    let { pos, velocity } = state ?? {
+      pos: real,
+      velocity: (() => {
+        const away = direction(cat, real, roll * 2 * Math.PI);
+        return { x: away.x * BOUNCE_MIN_PX_PER_S, y: away.y * BOUNCE_MIN_PX_PER_S };
+      })(),
+    };
+    const seconds = dt / 1000;
+    let x = pos.x + velocity.x * seconds;
+    let y = pos.y + velocity.y * seconds;
+    const maxX = Math.max(viewport.width - 1, 0);
+    const maxY = Math.max(viewport.height - 1, 0);
+    let vx = velocity.x;
+    let vy = velocity.y;
+    if (x < 0) [x, vx] = [-x, Math.abs(vx)];
+    if (x > maxX) [x, vx] = [2 * maxX - x, -Math.abs(vx)];
+    if (y < 0) [y, vy] = [-y, Math.abs(vy)];
+    if (y > maxY) [y, vy] = [2 * maxY - y, -Math.abs(vy)];
+    pos = clampToViewport({ x, y }, viewport);
+    velocity = { x: vx, y: vy };
+    return { look: restingLook(pos), state: { pos, velocity } };
+  },
+};
+
+export const axisLock: Effect = {
+  id: 'axis-lock',
+  name: 'Axis lock',
+  description: 'Your cursor moves only sideways, or only up and down, for 5 seconds.',
+  durationMs: 5000,
+  step: ({ previous, delta, roll, viewport }) => {
+    const horizontal = roll < 0.5;
+    return {
+      look: restingLook(
+        clampToViewport(
+          horizontal
+            ? { x: previous.x + delta.x, y: previous.y }
+            : { x: previous.x, y: previous.y + delta.y },
+          viewport
+        )
+      ),
+    };
+  },
+};

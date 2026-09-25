@@ -681,3 +681,66 @@ effect and its own way of appearing and disappearing".
   control: laying out from `real` again fails it. Also taken: the scrolled-page
   shake test now takes its baseline from the frame *before* the shake.
   `npm test` 191; test:e2e 21; lint, tsc, Prettier green.
+
+## T9 — Cats 15–20 (`night-2026-09-25-t9-cats-15-20`)
+
+- Start: 2026-09-25 18:32, budget 14,491,638 tokens.
+- Base SHA: `bb8d386` (T8 merged).
+- T8 outcome: committed `bb8d386`, fast-forwarded, both branches pushed; CI
+  poll started (pending).
+- **T8 CI outcome: CI passed** — `night-2026-09-25-t8-cats-8-14`
+  https://github.com/lazurq-png/next.js-dashboard/actions/runs/36161268630,
+  `night-2026-09-25` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36161273169.
+
+### What the code does
+
+- `app/ui/xenocats/effects.ts`: six new effects — **delay** (keeps a trail of
+  pointer positions in its state and shows where the pointer was 800 ms ago,
+  interpolated; waits at the attack's start for the first 800 ms; the trail is
+  trimmed to what can still be needed; 5 s), **fall** (follows the pointer's
+  movement but sinks 260 px/s using the frame `dt`, so moving up holds it; 4 s),
+  **blur** (4 px blur, half-transparent; 5 s), **spiral** (from where the
+  pointer was, two turns in to the screen centre, eased; 4 s), **bounce**
+  (launched away from the cat at 700 px/s, then keeps its momentum and reflects
+  off the edges, ignoring the pointer; position and velocity in state; 4 s),
+  **axis lock** (only horizontal or only vertical movement, chosen by the roll;
+  5 s).
+- `cat-types.ts` / `cat-sprite.tsx`: cats 15–20; a stub tail (Manx), hypnotic
+  spiral eyes and a laser visor; the eyes group is `.xenocat-eyes`.
+- `cat-layer.tsx`: during arrival and departure the cat's outer element carries
+  `--xenocat-ms`, its duration, for animations that stage its parts.
+- `app/ui/global.css`: 12 animations — slow-motion fade in / slow fade, lowered
+  on a UFO beam / beamed up (the beam is a `::before` cone), smoke / poof, eyes
+  first then body / body fades then eyes, bounce in / bounce off, slide in along
+  a laser line / off along it (the line is a `::before`).
+- Tests: unit tests for the six effects (delay's lag, initial wait and bounded
+  trail; fall rate, holding level by moving up, the bottom edge; blur; spiral
+  approach, turning and arrival; bounce direction, bounds, reflection and
+  ignoring the pointer; both axis-lock directions) and the roster — exactly 20
+  cats in plan order; e2e for cats 15–20, and "all 20 cats are on /cats, and a
+  sixth summon is refused while five are on screen" (summoned by keyboard,
+  which effects never block).
+- Screenshot: `screenshots/t9-cats-gallery.png` — all 20 cats.
+
+### Why it was added
+
+Plan task 9, completing the goal's "at least 20 cat types", each with its own
+attack, arrival and departure, and proving "never more than 5 cats on screen"
+in a real browser.
+
+### Verification
+
+- `npm test` → **212 passed**; `npm run test:e2e` → **28 passed**; cats spec
+  ×2 → 50/50. Lint 0; typegen + tsc 0; Prettier clean. First unit run: one
+  failure — Hypno Rex's entrance/exit used a shared keyframe, breaking the
+  roster's CSS convention; the CSS was fixed, not the test.
+- Looked at: the gallery screenshot — 20 distinct cats. Not looked at: the
+  animations in motion.
+- Reviewer: **Approve**, no defects; four low findings, all applied: the
+  all-20/sixth-summon test leads with Lag Ragamuffin (≈4 s on screen) instead of
+  Void Tabby (2.3 s), removing a slow-runner timing window; the Hypno Rex poll
+  samples every 100 ms (the in-range window is ~1.5 s); the cat style object is
+  typed `CSSProperties & { '--xenocat-ms'?: string }` instead of cast, so its
+  properties stay checked; `spiral` uses its own duration constant. Re-run:
+  `npm test` 212; `test:e2e` 28; the two hardened tests ×4 → 8/8; lint, tsc,
+  Prettier green.

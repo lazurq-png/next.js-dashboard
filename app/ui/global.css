@@ -757,3 +757,304 @@ input[type='number']::-webkit-outer-spin-button {
     transform: translateY(40px) scale(0.6);
   }
 }
+
+/* 15 Lag Ragamuffin: fades in in slow motion; a slow fade. */
+.xenocat-enter-slow-motion {
+  animation-name: xenocat-enter-slow-motion;
+  animation-timing-function: cubic-bezier(0.1, 0, 0.2, 1);
+}
+@keyframes xenocat-enter-slow-motion {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.92);
+    filter: blur(1px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.xenocat-exit-slow-fade {
+  animation-name: xenocat-exit-slow-fade;
+  animation-timing-function: cubic-bezier(0.6, 0, 0.9, 1);
+}
+@keyframes xenocat-exit-slow-fade {
+  from {
+    opacity: 1;
+    filter: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(2px);
+  }
+}
+
+/* 16 Gravity Manx: lowered on a UFO beam; beamed up. The beam is the ::before. */
+.xenocat-enter-beam-down::before,
+.xenocat-exit-beam-up::before {
+  content: '';
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 20%;
+  height: 240px;
+  background: linear-gradient(to bottom, rgba(190, 242, 100, 0.05), rgba(190, 242, 100, 0.55));
+  clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
+  animation: xenocat-beam var(--xenocat-ms, 1s) ease-in-out both;
+}
+@keyframes xenocat-beam {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+}
+.xenocat-enter-beam-down {
+  animation-name: xenocat-enter-beam-down;
+  animation-timing-function: ease-in-out;
+}
+@keyframes xenocat-enter-beam-down {
+  0%,
+  15% {
+    transform: translateY(-160px);
+  }
+  100% {
+    transform: none;
+  }
+}
+.xenocat-exit-beam-up {
+  animation-name: xenocat-exit-beam-up;
+  animation-timing-function: ease-in-out;
+}
+@keyframes xenocat-exit-beam-up {
+  0%,
+  15% {
+    transform: none;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-160px) scale(0.7);
+  }
+}
+
+/* 17 Smoke Bombay: materialises from smoke; a poof of smoke. */
+.xenocat-enter-smoke {
+  animation-name: xenocat-enter-smoke;
+  animation-timing-function: ease-out;
+}
+@keyframes xenocat-enter-smoke {
+  0% {
+    opacity: 0;
+    transform: scale(1.3);
+    filter: blur(12px) grayscale(1) brightness(2.5);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(4px) grayscale(0.6) brightness(1.5);
+  }
+  100% {
+    transform: none;
+    filter: none;
+  }
+}
+.xenocat-exit-poof {
+  animation-name: xenocat-exit-poof;
+  animation-timing-function: ease-out;
+}
+@keyframes xenocat-exit-poof {
+  0% {
+    transform: none;
+    filter: none;
+  }
+  30% {
+    transform: scale(0.9);
+    filter: grayscale(1) brightness(2.5) blur(2px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+    filter: grayscale(1) brightness(3) blur(14px);
+  }
+}
+
+/* 18 Hypno Rex: eyes appear first, then the body; the body fades, eyes last.
+   The outer element only carries the duration; the stages run on the parts. */
+.xenocat-enter-eyes-first {
+  animation-name: xenocat-enter-eyes-first;
+}
+@keyframes xenocat-enter-eyes-first {
+  from,
+  to {
+    opacity: 1;
+  }
+}
+.xenocat-exit-eyes-last {
+  animation-name: xenocat-exit-eyes-last;
+}
+@keyframes xenocat-exit-eyes-last {
+  from,
+  to {
+    opacity: 1;
+  }
+}
+.xenocat-enter-eyes-first .xenocat-body > :not(.xenocat-eyes) {
+  animation: xenocat-body-late var(--xenocat-ms, 1s) ease-in both;
+}
+.xenocat-enter-eyes-first .xenocat-eyes {
+  animation: xenocat-eyes-early var(--xenocat-ms, 1s) ease-out both;
+}
+@keyframes xenocat-body-late {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes xenocat-eyes-early {
+  0% {
+    opacity: 0;
+  }
+  25%,
+  100% {
+    opacity: 1;
+  }
+}
+.xenocat-exit-eyes-last .xenocat-body > :not(.xenocat-eyes) {
+  animation: xenocat-body-early-out var(--xenocat-ms, 1s) ease-in both;
+}
+.xenocat-exit-eyes-last .xenocat-eyes {
+  animation: xenocat-eyes-late-out var(--xenocat-ms, 1s) ease-in both;
+}
+@keyframes xenocat-body-early-out {
+  0% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes xenocat-eyes-late-out {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 19 Pinball Devon: bounces in; bounces off. */
+.xenocat-enter-bounce-in {
+  animation-name: xenocat-enter-bounce-in;
+  animation-timing-function: linear;
+  transform-origin: 50% 100%;
+}
+@keyframes xenocat-enter-bounce-in {
+  0% {
+    opacity: 0;
+    transform: translate(-120px, -140px);
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
+  }
+  10% {
+    opacity: 1;
+  }
+  40% {
+    transform: translate(-40px, 0) scale(1.1, 0.85);
+    animation-timing-function: cubic-bezier(0, 0, 0.5, 1);
+  }
+  60% {
+    transform: translate(-15px, -45px);
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
+  }
+  80% {
+    transform: translate(0, 0) scale(1.05, 0.92);
+    animation-timing-function: cubic-bezier(0, 0, 0.5, 1);
+  }
+  90% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: none;
+  }
+}
+.xenocat-exit-bounce-off {
+  animation-name: xenocat-exit-bounce-off;
+  animation-timing-function: linear;
+  transform-origin: 50% 100%;
+}
+@keyframes xenocat-exit-bounce-off {
+  0% {
+    transform: scale(1.1, 0.85);
+    animation-timing-function: cubic-bezier(0, 0, 0.5, 1);
+  }
+  40% {
+    transform: translate(60px, -90px);
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
+  }
+  70% {
+    transform: translate(110px, 0) scale(1.1, 0.85);
+    animation-timing-function: cubic-bezier(0, 0, 0.5, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(170px, -120px);
+  }
+}
+
+/* 20 Laser Ocicat: slides in along a laser line; slides off along it. */
+.xenocat-enter-laser-in::before,
+.xenocat-exit-laser-out::before {
+  content: '';
+  position: absolute;
+  top: 60%;
+  left: -220px;
+  right: -220px;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #ef4444 30%, #ef4444 70%, transparent);
+  box-shadow: 0 0 6px 1px rgba(239, 68, 68, 0.8);
+  animation: xenocat-beam var(--xenocat-ms, 1s) ease-in-out both;
+}
+.xenocat-enter-laser-in {
+  animation-name: xenocat-enter-laser-in;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes xenocat-enter-laser-in {
+  0%,
+  15% {
+    opacity: 0;
+    transform: translateX(-200px);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+.xenocat-exit-laser-out {
+  animation-name: xenocat-exit-laser-out;
+  animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.3);
+}
+@keyframes xenocat-exit-laser-out {
+  0% {
+    transform: none;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(200px);
+  }
+}

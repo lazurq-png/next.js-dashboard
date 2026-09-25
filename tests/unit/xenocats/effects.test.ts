@@ -38,6 +38,16 @@ import {
   orbit,
   teleport,
   tiny,
+  BLUR_PX,
+  DELAY_MS,
+  FALL_PX_PER_S,
+  type CursorLook,
+  axisLock,
+  blur,
+  bounce,
+  delay,
+  fall,
+  spiral,
 } from '@/app/ui/xenocats/effects';
 
 const viewport = { width: 1000, height: 800 };
@@ -455,5 +465,142 @@ describe('tiny and giant', () => {
     expect(GIANT_SCALE).toBe(4);
     expect(lookOf(tiny)).toMatchObject({ x: 500, y: 400, scale: 0.25, visible: true });
     expect(lookOf(giant)).toMatchObject({ x: 500, y: 400, scale: 4, visible: true });
+  });
+});
+
+/** Runs an effect frame by frame, carrying its state, like the controller does. */
+function play(
+  effect: Effect,
+  frames: Partial<EffectInput>[],
+  base: Partial<EffectInput> = {}
+): CursorLook[] {
+  let state: unknown;
+  let previous = restingLook(base.real ?? { x: 500, y: 400 });
+  let last = 0;
+  return frames.map((frame) => {
+    const elapsed = frame.elapsed ?? 0;
+    const out = effect.step({
+      ...input({ ...base, ...frame }),
+      previous,
+      dt: elapsed - last,
+      state,
+    });
+    last = elapsed;
+    state = out.state;
+    previous = out.look;
+    return out.look;
+  });
+}
+
+describe('delay', () => {
+  it('shows where the pointer was 800 ms ago, for 5 seconds', () => {
+    expect(delay.durationMs).toBe(5000);
+    expect(DELAY_MS).toBe(800);
+    // The pointer moves right 10 px every 100 ms.
+    const frames = Array.from({ length: 30 }, (_, i) => ({
+      elapsed: i * 100,
+      real: { x: 500 + i * 10, y: 400 },
+    }));
+    const looks = play(delay, frames, { start: { x: 500, y: 400 } });
+    // Before 800 ms it waits where the attack began...
+    expect(looks[5]).toMatchObject({ x: 500, y: 400 });
+    // ...then lags exactly 800 ms (80 px) behind.
+    expect(looks[20].x).toBeCloseTo(500 + 12 * 10);
+    expect(looks[29].x).toBeCloseTo(500 + 21 * 10);
+  });
+
+  it('keeps a bounded trail however long it runs', () => {
+    let state: { trail: unknown[] } | undefined;
+    for (let t = 0; t <= 5000; t += 16) {
+      state = delay.step({ ...input({ elapsed: t }), state } as never).state as never;
+    }
+    expect(state!.trail.length).toBeLessThan(80);
+  });
+});
+
+describe('fall', () => {
+  it('sinks steadily unless you move up, for 4 seconds', () => {
+    expect(fall.durationMs).toBe(4000);
+    const still = play(fall, [{ elapsed: 0 }, { elapsed: 500 }, { elapsed: 1000 }]);
+    expect(still[2].y - still[0].y).toBeCloseTo(FALL_PX_PER_S);
+    // Moving up as fast as it sinks holds it level.
+    const fighting = play(fall, [
+      { elapsed: 0 },
+      { elapsed: 500, delta: { x: 0, y: -FALL_PX_PER_S / 2 } },
+      { elapsed: 1000, delta: { x: 0, y: -FALL_PX_PER_S / 2 } },
+    ]);
+    expect(fighting[2].y).toBeCloseTo(fighting[0].y);
+  });
+
+  it('stops at the bottom edge', () => {
+    const looks = play(fall, [{ elapsed: 0 }, { elapsed: 4000 }]);
+    expect(looks[1].y).toBe(viewport.height - 1);
+  });
+});
+
+describe('blur', () => {
+  it('blurs the cursor and makes it half-transparent, for 5 seconds', () => {
+    expect(blur.durationMs).toBe(5000);
+    expect(lookOf(blur)).toMatchObject({
+      x: 500,
+      y: 400,
+      blur: BLUR_PX,
+      opacity: 0.5,
+      visible: true,
+    });
+  });
+});
+
+describe('spiral', () => {
+  it('spirals the cursor in to the middle of the screen over 4 seconds', () => {
+    expect(spiral.durationMs).toBe(4000);
+    const centre = { x: viewport.width / 2, y: viewport.height / 2 };
+    const start = { x: 900, y: 700 };
+    const at = (elapsed: number) => lookOf(spiral, { start, real: start, elapsed });
+    const d = (p: { x: number; y: number }) => Math.hypot(p.x - centre.x, p.y - centre.y);
+    expect(at(0).x).toBeCloseTo(900);
+    expect(d(at(1000))).toBeLessThan(d(start));
+    expect(d(at(3000))).toBeLessThan(d(at(2000)));
+    expect(d(at(4000))).toBeCloseTo(0);
+    // It turns as it goes: the angle keeps changing.
+    const angle = (p: { x: number; y: number }) => Math.atan2(p.y - centre.y, p.x - centre.x);
+    expect(angle(at(1000))).not.toBeCloseTo(angle(start));
+  });
+});
+
+describe('bounce', () => {
+  it('launches away from the cat, keeps its speed and bounces off the edges, for 4 s', () => {
+    expect(bounce.durationMs).toBe(4000);
+    const frames = Array.from({ length: 250 }, (_, i) => ({ elapsed: i * 16 }));
+    const looks = play(bounce, frames, { cat: { x: 400, y: 400 } });
+    // It first flies right, away from the cat.
+    expect(looks[5].x).toBeGreaterThan(looks[0].x);
+    for (const look of looks) {
+      expect(look.x).toBeGreaterThanOrEqual(0);
+      expect(look.x).toBeLessThanOrEqual(viewport.width - 1);
+    }
+    // It reached the right edge and came back: momentum kept, direction reversed.
+    const furthest = Math.max(...looks.map((l) => l.x));
+    expect(furthest).toBeGreaterThan(viewport.width - 20);
+    expect(looks.at(-1)!.x).toBeLessThan(furthest - 100);
+  });
+
+  it('ignores the pointer once launched', () => {
+    const a = play(bounce, [{ elapsed: 0 }, { elapsed: 100 }], { cat: { x: 400, y: 400 } });
+    const b = play(
+      bounce,
+      [{ elapsed: 0 }, { elapsed: 100, real: { x: 100, y: 100 }, delta: { x: -400, y: -300 } }],
+      { cat: { x: 400, y: 400 } }
+    );
+    expect(b[1]).toEqual(a[1]);
+  });
+});
+
+describe('axis lock', () => {
+  it('lets the cursor move only sideways, or only up and down, for 5 seconds', () => {
+    expect(axisLock.durationMs).toBe(5000);
+    const diagonal = { delta: { x: 30, y: 40 } };
+    expect(lookOf(axisLock, { ...diagonal, roll: 0.2 })).toMatchObject({ x: 530, y: 400 });
+    expect(lookOf(axisLock, { ...diagonal, roll: 0.7 })).toMatchObject({ x: 500, y: 440 });
   });
 });

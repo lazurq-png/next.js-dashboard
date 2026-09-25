@@ -20,8 +20,9 @@ describe('the cat roster', () => {
     }
   });
 
-  it('follows the plan’s roster for cats 1–14', () => {
-    expect(CAT_TYPES.slice(0, 14).map((type) => [type.number, type.name, type.effect.id])).toEqual([
+  it('is the plan’s roster of 20 cats, in order', () => {
+    expect(CAT_TYPES).toHaveLength(20);
+    expect(CAT_TYPES.map((type) => [type.number, type.name, type.effect.id])).toEqual([
       [1, 'Void Tabby', 'vanish'],
       [2, 'Gravi Coon', 'heavy'],
       [3, 'Pulsar Siamese', 'knockback'],
@@ -36,6 +37,12 @@ describe('the cat roster', () => {
       [12, 'Wobble Fold', 'drunk'],
       [13, 'Munchkin Mite', 'tiny'],
       [14, 'Titan Forest Cat', 'giant'],
+      [15, 'Lag Ragamuffin', 'delay'],
+      [16, 'Gravity Manx', 'fall'],
+      [17, 'Smoke Bombay', 'blur'],
+      [18, 'Hypno Rex', 'spiral'],
+      [19, 'Pinball Devon', 'bounce'],
+      [20, 'Laser Ocicat', 'axis-lock'],
     ]);
   });
 

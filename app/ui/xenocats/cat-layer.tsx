@@ -175,12 +175,14 @@ function CatView({
       : cat.phase === 'leaving'
         ? { className: `xenocat-exit-${type.exit}`, ms: type.exitMs }
         : null;
-  const style: CSSProperties = {
+  const style: CSSProperties & { '--xenocat-ms'?: string } = {
     left: cat.x,
     top: cat.y,
     width: size,
     height: size,
     animationDuration: outer ? `${outer.ms}ms` : undefined,
+    // For animations that stage parts of the cat (e.g. eyes before body).
+    '--xenocat-ms': outer ? `${outer.ms}ms` : undefined,
   };
   const asleep = cat.phase === 'sleeping';
   // The one-shot phase animations last exactly as long as their phase (config.ts).

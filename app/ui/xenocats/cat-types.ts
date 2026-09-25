@@ -4,9 +4,14 @@
 
 import {
   type Effect,
+  axisLock,
+  blur,
+  bounce,
   decoys,
+  delay,
   drift,
   drunk,
+  fall,
   freeze,
   giant,
   heavy,
@@ -15,6 +20,7 @@ import {
   magnet,
   orbit,
   reverse,
+  spiral,
   teleport,
   tiny,
   vanish,
@@ -37,7 +43,9 @@ export type CatLook = {
   ears: 'pointed' | 'tufted' | 'folded' | 'big';
   pattern: 'none' | 'stripes' | 'spots' | 'patches' | 'points' | 'wrinkles' | 'frost' | 'stars';
   antenna: 'single' | 'double' | 'orb' | 'zigzag';
-  eyes: 'slit' | 'round' | 'three';
+  eyes: 'slit' | 'round' | 'three' | 'spiral' | 'visor';
+  /** A Manx has only a stub. */
+  tail?: 'long' | 'stub';
 };
 
 export type CatType = {
@@ -227,6 +235,85 @@ export const CAT_TYPES: readonly CatType[] = [
     exit: 'stomp-out',
     exitMs: 800,
     shake: true,
+  },
+  {
+    id: 'lag-ragamuffin',
+    number: 15,
+    name: 'Lag Ragamuffin',
+    effect: delay,
+    palette: { body: '#e7dccb', belly: '#faf6ef', glow: '#60a5fa', accent: '#7c6a55' },
+    look: { build: 'fluffy', ears: 'pointed', pattern: 'points', antenna: 'single', eyes: 'round' },
+    entrance: 'slow-motion',
+    entranceMs: 1800,
+    exit: 'slow-fade',
+    exitMs: 1600,
+  },
+  {
+    id: 'gravity-manx',
+    number: 16,
+    name: 'Gravity Manx',
+    effect: fall,
+    palette: { body: '#a16207', belly: '#fde68a', glow: '#bef264', accent: '#422006' },
+    look: {
+      build: 'stocky',
+      ears: 'pointed',
+      pattern: 'none',
+      antenna: 'orb',
+      eyes: 'slit',
+      tail: 'stub',
+    },
+    entrance: 'beam-down',
+    entranceMs: 1300,
+    exit: 'beam-up',
+    exitMs: 1100,
+  },
+  {
+    id: 'smoke-bombay',
+    number: 17,
+    name: 'Smoke Bombay',
+    effect: blur,
+    palette: { body: '#18181b', belly: '#3f3f46', glow: '#f97316', accent: '#000000' },
+    look: { build: 'sleek', ears: 'pointed', pattern: 'none', antenna: 'single', eyes: 'round' },
+    entrance: 'smoke',
+    entranceMs: 1100,
+    exit: 'poof',
+    exitMs: 700,
+  },
+  {
+    id: 'hypno-rex',
+    number: 18,
+    name: 'Hypno Rex',
+    effect: spiral,
+    palette: { body: '#c4b5fd', belly: '#ede9fe', glow: '#f472b6', accent: '#4c1d95' },
+    look: { build: 'sleek', ears: 'big', pattern: 'none', antenna: 'orb', eyes: 'spiral' },
+    entrance: 'eyes-first',
+    entranceMs: 1400,
+    exit: 'eyes-last',
+    exitMs: 1200,
+  },
+  {
+    id: 'pinball-devon',
+    number: 19,
+    name: 'Pinball Devon',
+    effect: bounce,
+    palette: { body: '#94a3b8', belly: '#e2e8f0', glow: '#22c55e', accent: '#1e293b' },
+    look: { build: 'stocky', ears: 'big', pattern: 'stripes', antenna: 'zigzag', eyes: 'round' },
+    entrance: 'bounce-in',
+    entranceMs: 1100,
+    exit: 'bounce-off',
+    exitMs: 900,
+  },
+  {
+    id: 'laser-ocicat',
+    number: 20,
+    name: 'Laser Ocicat',
+    effect: axisLock,
+    palette: { body: '#d6b98c', belly: '#f5ead6', glow: '#ef4444', accent: '#3b2a17' },
+    look: { build: 'sleek', ears: 'pointed', pattern: 'spots', antenna: 'double', eyes: 'visor' },
+    entrance: 'laser-in',
+    entranceMs: 1000,
+    exit: 'laser-out',
+    exitMs: 800,
   },
 ];
 

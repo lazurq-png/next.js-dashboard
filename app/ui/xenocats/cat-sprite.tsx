@@ -47,7 +47,7 @@ function Awake({ palette: p, look }: Parts) {
     <g className="xenocat-body">
       {/* tail */}
       <path
-        d="M54 54 C66 50 66 36 60 30"
+        d={look.tail === 'stub' ? 'M54 53 q5 -1 6 -5' : 'M54 54 C66 50 66 36 60 30'}
         fill="none"
         stroke={look.pattern === 'points' ? p.accent : p.body}
         strokeWidth={fluffy ? 9 : 6}
@@ -192,6 +192,37 @@ function Antenna({ palette: p, look }: Parts) {
 }
 
 function Eyes({ palette: p, look }: Parts) {
+  if (look.eyes === 'visor') {
+    return (
+      <g className="xenocat-eyes">
+        <rect x="23.5" y="25" width="25" height="8" rx="4" fill={p.accent} />
+        <rect
+          className="xenocat-glow"
+          x="25"
+          y="26.5"
+          width="22"
+          height="5"
+          rx="2.5"
+          fill={p.glow}
+        />
+        <path d="M27 29 h18" stroke="#ffffff" strokeWidth="0.8" opacity="0.8" />
+      </g>
+    );
+  }
+  if (look.eyes === 'spiral') {
+    const swirl = (cx: number) =>
+      `M${cx} 29 m0 -0.8 a0.8 0.8 0 1 1 -0.8 0.8 a1.8 1.8 0 1 1 1.8 1.8 a2.9 2.9 0 1 1 -2.9 -2.9 a3.9 3.9 0 1 1 3.9 3.9`;
+    return (
+      <g className="xenocat-eyes">
+        {[30, 42].map((cx) => (
+          <g key={cx}>
+            <circle className="xenocat-glow" cx={cx} cy="29" r="5.2" fill={p.glow} />
+            <path d={swirl(cx)} fill="none" stroke={p.accent} strokeWidth="1.1" />
+          </g>
+        ))}
+      </g>
+    );
+  }
   const pupil = (cx: number) =>
     look.eyes === 'round' ? (
       <circle cx={cx} cy="29.5" r="2.4" fill={p.accent} />
@@ -199,7 +230,7 @@ function Eyes({ palette: p, look }: Parts) {
       <ellipse cx={cx} cy="29" rx="1.3" ry="4.2" fill={p.accent} />
     );
   return (
-    <g>
+    <g className="xenocat-eyes">
       {[30, 42].map((cx) => (
         <g key={cx}>
           <ellipse className="xenocat-glow" cx={cx} cy="29" rx="4.6" ry="5.6" fill={p.glow} />
@@ -417,7 +448,7 @@ function Asleep({ palette: p, look }: Parts) {
       <AsleepPattern palette={p} look={look} />
       {/* tail wrapped round the front */}
       <path
-        d="M62 54 C62 66 34 68 22 62"
+        d={look.tail === 'stub' ? 'M62 52 q4 2 5 -2' : 'M62 54 C62 66 34 68 22 62'}
         fill="none"
         stroke={look.pattern === 'points' ? p.accent : p.body}
         strokeWidth={fluffy ? 9 : 6}
