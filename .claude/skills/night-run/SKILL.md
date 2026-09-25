@@ -382,8 +382,17 @@ these additions.
      outcome that may say so.
    - **`UNOBSERVED`, `cancelled` or `skipped`** → "pushed; CI not observed",
      and why. Never infer a result.
-   - **`failure`** → a verification failure found late. It continues this
-     task's three-cycle count (`.claude/rules/debugging.md` §8):
+   - **`failure` the run cannot fix** → CI's environment, not the code: a
+     repository secret or setting is missing or wrong (e.g. `POSTGRES_URL`
+     unset, the database refusing CI's connection), shown by the failing job's
+     name and step and by the same check passing locally. Record "CI failed:
+     environment (<what is missing>)" and put in `questions.md` exactly what a
+     human must set. Spend **no** repair cycle on it, and do not count it toward
+     §6's stop condition: no code change can fix it, and §3 forbids the run
+     from changing GitHub settings. Later tasks' CI will fail the same way;
+     record each, and keep working.
+   - **`failure`** otherwise → a verification failure found late. It continues
+     this task's three-cycle count (`.claude/rules/debugging.md` §8):
      1. Name the failing jobs: append `/jobs` to the run's API URL
         (`https://api.github.com/repos/lazurq-png/next.js-dashboard/actions/runs/<id>/jobs`).
         Do not fetch logs, which needs auth and is outside §3's exception.

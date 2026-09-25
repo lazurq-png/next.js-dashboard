@@ -40,9 +40,10 @@ run cannot see the usage limit, and if it runs out the session just stops.
   only act on the pointer. The fake cursor and the cats are hidden from
   assistive technology (`aria-hidden`).
 - **Name:** Xenocat Analytics.
-- **CI uses the real database.** The human adds the repository secrets
-  `POSTGRES_URL` and `AUTH_SECRET` on GitHub; the run cannot. No test, local or
-  in CI, may write to the database.
+- **CI uses the real database.** The human adds the repository secret
+  `POSTGRES_URL` on GitHub; the run cannot. CI generates its own throwaway
+  `AUTH_SECRET` per run, so no secret is needed for that. No test, local or in
+  CI, may write to the database.
 - **Exploration work (task 11) is merged** like planned work.
 
 ## Tasks
@@ -61,13 +62,17 @@ run cannot see the usage limit, and if it runs out the session just stops.
 2. **Browser tests and CI.** Set up Playwright with an `npm run test:e2e` script
    (Chromium only), with a smoke test that the home page and `/login` render.
    Add `.github/workflows/ci.yml`, which on every push and pull request runs
-   `npm ci`, lint, type check, `npm test`, `npm run build` and `npm run test:e2e`,
-   reading `POSTGRES_URL` and `AUTH_SECRET` from repository secrets. It must
+   `npm ci`, lint, type check, `npm test`, `npm run build` and `npm run test:e2e`.
+   It reads `POSTGRES_URL` from a repository secret. It does **not** use an
+   `AUTH_SECRET` secret: a step generates a random one for each CI run (e.g.
+   `openssl rand -base64 32` written to `$GITHUB_ENV`), since it only signs
+   sessions inside that run, and sets `AUTH_TRUST_HOST=true` so NextAuth accepts
+   the `localhost` host under `next start`. It must
    trigger on pushes to `night-**` branches, because the run polls CI for every
    task it pushes. From this task on, `npm run test:e2e` is part of the gate.
    Update the "no CI" statements in `CLAUDE.md` §9, `.claude/README.md` and
    `.claude/docs/ai-workflow.md` to describe the workflow. Record in
-   `questions.md` that the human must add the two secrets.
+   `questions.md` that the human must add the `POSTGRES_URL` secret.
    *Explicitly lifts §3's dependency, `npm install`, external-service and
    installing-software rules for this task only*, for `@playwright/test` and
    `npx playwright install chromium`, and nothing else.
