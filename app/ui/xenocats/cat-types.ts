@@ -2,7 +2,23 @@
 // arriving and leaving. Entrances and exits name CSS animations in global.css
 // (`xenocat-enter-<name>` / `xenocat-exit-<name>`).
 
-import { type Effect, drift, freeze, heavy, jitter, knockback, reverse, vanish } from './effects';
+import {
+  type Effect,
+  decoys,
+  drift,
+  drunk,
+  freeze,
+  giant,
+  heavy,
+  jitter,
+  knockback,
+  magnet,
+  orbit,
+  reverse,
+  teleport,
+  tiny,
+  vanish,
+} from './effects';
 
 export type CatPalette = {
   /** Fur. */
@@ -19,7 +35,7 @@ export type CatPalette = {
 export type CatLook = {
   build: 'sleek' | 'fluffy' | 'stocky';
   ears: 'pointed' | 'tufted' | 'folded' | 'big';
-  pattern: 'none' | 'stripes' | 'patches' | 'points' | 'wrinkles' | 'frost' | 'stars';
+  pattern: 'none' | 'stripes' | 'spots' | 'patches' | 'points' | 'wrinkles' | 'frost' | 'stars';
   antenna: 'single' | 'double' | 'orb' | 'zigzag';
   eyes: 'slit' | 'round' | 'three';
 };
@@ -38,6 +54,8 @@ export type CatType = {
   /** How it leaves: `xenocat-exit-<exit>`. */
   exit: string;
   exitMs: number;
+  /** Shakes the page as it arrives and leaves (Titan Forest Cat's stomp). */
+  shake?: boolean;
 };
 
 export const CAT_TYPES: readonly CatType[] = [
@@ -124,6 +142,91 @@ export const CAT_TYPES: readonly CatType[] = [
     entranceMs: 1100,
     exit: 'dissipate',
     exitMs: 900,
+  },
+  {
+    id: 'quantum-kitten',
+    number: 8,
+    name: 'Quantum Kitten',
+    effect: teleport,
+    palette: { body: '#99f6e4', belly: '#f0fdfa', glow: '#2dd4bf', accent: '#115e59' },
+    look: { build: 'sleek', ears: 'big', pattern: 'none', antenna: 'double', eyes: 'three' },
+    entrance: 'blink',
+    entranceMs: 900,
+    exit: 'blink-out',
+    exitMs: 600,
+  },
+  {
+    id: 'magneto-bengal',
+    number: 9,
+    name: 'Magneto Bengal',
+    effect: magnet,
+    palette: { body: '#e3a857', belly: '#fbe7c6', glow: '#ef4444', accent: '#4a2c12' },
+    look: { build: 'sleek', ears: 'pointed', pattern: 'spots', antenna: 'orb', eyes: 'slit' },
+    entrance: 'slide-edge',
+    entranceMs: 900,
+    exit: 'slide-off',
+    exitMs: 800,
+  },
+  {
+    id: 'orbit-abyssinian',
+    number: 10,
+    name: 'Orbit Abyssinian',
+    effect: orbit,
+    palette: { body: '#c0773f', belly: '#eecfa8', glow: '#fde047', accent: '#5c2f12' },
+    look: { build: 'sleek', ears: 'big', pattern: 'stripes', antenna: 'orb', eyes: 'round' },
+    entrance: 'spiral',
+    entranceMs: 1100,
+    exit: 'spiral-out',
+    exitMs: 900,
+  },
+  {
+    id: 'decoy-burmese',
+    number: 11,
+    name: 'Decoy Burmese',
+    effect: decoys,
+    palette: { body: '#5b3a29', belly: '#8c6a55', glow: '#facc15', accent: '#2b1a10' },
+    look: { build: 'stocky', ears: 'pointed', pattern: 'none', antenna: 'double', eyes: 'round' },
+    entrance: 'shadow-split',
+    entranceMs: 900,
+    exit: 'shadow-merge',
+    exitMs: 800,
+  },
+  {
+    id: 'wobble-fold',
+    number: 12,
+    name: 'Wobble Fold',
+    effect: drunk,
+    palette: { body: '#9ca3af', belly: '#e5e7eb', glow: '#fb923c', accent: '#374151' },
+    look: { build: 'fluffy', ears: 'folded', pattern: 'stripes', antenna: 'zigzag', eyes: 'round' },
+    entrance: 'tumble',
+    entranceMs: 1000,
+    exit: 'roll-away',
+    exitMs: 900,
+  },
+  {
+    id: 'munchkin-mite',
+    number: 13,
+    name: 'Munchkin Mite',
+    effect: tiny,
+    palette: { body: '#f9a8d4', belly: '#fdf2f8', glow: '#a3e635', accent: '#831843' },
+    look: { build: 'stocky', ears: 'big', pattern: 'spots', antenna: 'single', eyes: 'round' },
+    entrance: 'grow-dot',
+    entranceMs: 800,
+    exit: 'shrink',
+    exitMs: 600,
+  },
+  {
+    id: 'titan-forest-cat',
+    number: 14,
+    name: 'Titan Forest Cat',
+    effect: giant,
+    palette: { body: '#6b4f3a', belly: '#c8b39a', glow: '#84cc16', accent: '#2d1f14' },
+    look: { build: 'fluffy', ears: 'tufted', pattern: 'patches', antenna: 'double', eyes: 'slit' },
+    entrance: 'stomp',
+    entranceMs: 900,
+    exit: 'stomp-out',
+    exitMs: 800,
+    shake: true,
   },
 ];
 

@@ -219,6 +219,18 @@ function Eyes({ palette: p, look }: Parts) {
 
 function HeadPattern({ palette: p, look }: Parts) {
   switch (look.pattern) {
+    case 'spots':
+      return (
+        <Spots
+          color={p.accent}
+          at={[
+            [29, 21],
+            [43, 20],
+            [36, 18],
+          ]}
+          r={1.3}
+        />
+      );
     case 'stripes':
       return (
         <path
@@ -270,6 +282,21 @@ function HeadPattern({ palette: p, look }: Parts) {
 
 function BodyPattern({ palette: p, look }: Parts) {
   switch (look.pattern) {
+    case 'spots':
+      return (
+        <Spots
+          color={p.accent}
+          at={[
+            [22, 47],
+            [28, 42],
+            [45, 43],
+            [51, 49],
+            [48, 57],
+            [24, 56],
+          ]}
+          r={1.9}
+        />
+      );
     case 'stripes':
       return (
         <path
@@ -323,6 +350,28 @@ function BodyPattern({ palette: p, look }: Parts) {
     default:
       return null;
   }
+}
+
+/** Bengal-style rosettes: a ring with a darker centre. */
+function Spots({ color, at, r }: { color: string; at: number[][]; r: number }) {
+  return (
+    <g>
+      {at.map(([x, y]) => (
+        <g key={`${x},${y}`}>
+          <circle
+            cx={x}
+            cy={y}
+            r={r * 1.5}
+            fill="none"
+            stroke={color}
+            strokeWidth={r * 0.7}
+            opacity="0.85"
+          />
+          <circle cx={x} cy={y} r={r * 0.6} fill={color} opacity="0.5" />
+        </g>
+      ))}
+    </g>
+  );
 }
 
 function Crystals({ color, at, size }: { color: string; at: number[][]; size: number }) {
@@ -438,6 +487,20 @@ function Asleep({ palette: p, look }: Parts) {
 
 function AsleepPattern({ palette: p, look }: Parts) {
   switch (look.pattern) {
+    case 'spots':
+      return (
+        <Spots
+          color={p.accent}
+          at={[
+            [38, 43],
+            [47, 41],
+            [55, 46],
+            [44, 56],
+            [56, 55],
+          ]}
+          r={1.9}
+        />
+      );
     case 'stripes':
       return (
         <path

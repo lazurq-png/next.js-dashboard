@@ -207,3 +207,174 @@ export const drift: Effect = {
     };
   },
 };
+
+const easeInOut = (t: number) => {
+  const c = Math.min(Math.max(t, 0), 1);
+  return c < 0.5 ? 2 * c * c : 1 - (-2 * c + 2) ** 2 / 2;
+};
+
+export const TELEPORT_JUMPS = 3;
+export const TELEPORT_EVERY_MS = 800;
+export const TELEPORT_MARGIN = 40;
+
+type TeleportState = { jump: number; anchor: Vec; spot: Vec };
+
+export const teleport: Effect<TeleportState> = {
+  id: 'teleport',
+  name: 'Teleport',
+  description: 'Your cursor jumps to a random spot, three times.',
+  durationMs: TELEPORT_JUMPS * TELEPORT_EVERY_MS,
+  step: ({ real, elapsed, roll, viewport, state }) => {
+    const jump = Math.min(Math.floor(elapsed / TELEPORT_EVERY_MS), TELEPORT_JUMPS - 1);
+    let current = state;
+    if (!current || current.jump !== jump) {
+      // A new jump: a random spot (the same for the same jump of the same attack),
+      // and from there the cursor follows the pointer's movement.
+      const random = createRandom(Math.floor(roll * 2 ** 31) ^ Math.imul(jump + 1, 0x85ebca6b));
+      const spot = {
+        x: random.range(
+          TELEPORT_MARGIN,
+          Math.max(viewport.width - TELEPORT_MARGIN, TELEPORT_MARGIN)
+        ),
+        y: random.range(
+          TELEPORT_MARGIN,
+          Math.max(viewport.height - TELEPORT_MARGIN, TELEPORT_MARGIN)
+        ),
+      };
+      current = { jump, anchor: real, spot };
+    }
+    const at = clampToViewport(
+      {
+        x: current.spot.x + real.x - current.anchor.x,
+        y: current.spot.y + real.y - current.anchor.y,
+      },
+      viewport
+    );
+    return { look: restingLook(at), state: current };
+  },
+};
+
+export const MAGNET_PULL = 0.75;
+export const MAGNET_RAMP_MS = 600;
+
+export const magnet: Effect = {
+  id: 'magnet',
+  name: 'Magnet',
+  description: 'Your cursor is pulled towards the cat for 4 seconds.',
+  durationMs: 4000,
+  step: ({ real, cat, elapsed, viewport }) => {
+    const pull = MAGNET_PULL * easeInOut(elapsed / MAGNET_RAMP_MS);
+    return {
+      look: restingLook(
+        clampToViewport(
+          { x: real.x + (cat.x - real.x) * pull, y: real.y + (cat.y - real.y) * pull },
+          viewport
+        )
+      ),
+    };
+  },
+};
+
+export const ORBIT_PERIOD_MS = 1200;
+export const ORBIT_RADIUS: readonly [number, number] = [70, 140];
+
+export const orbit: Effect = {
+  id: 'orbit',
+  name: 'Orbit',
+  description: 'Your cursor circles the cat for 3 seconds.',
+  durationMs: 3000,
+  step: ({ start, cat, elapsed, viewport, roll }) => {
+    const away = direction(cat, start, roll * 2 * Math.PI);
+    const reach = Math.hypot(start.x - cat.x, start.y - cat.y);
+    const radius = Math.min(Math.max(reach, ORBIT_RADIUS[0]), ORBIT_RADIUS[1]);
+    const angle = Math.atan2(away.y, away.x) + (2 * Math.PI * elapsed) / ORBIT_PERIOD_MS;
+    return {
+      look: restingLook(
+        clampToViewport(
+          { x: cat.x + Math.cos(angle) * radius, y: cat.y + Math.sin(angle) * radius },
+          viewport
+        )
+      ),
+    };
+  },
+};
+
+export const DECOY_COUNT = 3;
+export const DECOY_RING: readonly [number, number] = [80, 160];
+
+export const decoys: Effect = {
+  id: 'decoys',
+  name: 'Decoys',
+  description: 'Four identical cursors for 5 seconds. Which one is yours?',
+  durationMs: 5000,
+  step: ({ real, start, roll, viewport }) => {
+    // Three extra cursors on a ring round yours, at fixed offsets for the whole
+    // attack (laid out once, from where the pointer was when it began). They are spread evenly over the arc that faces into the screen — the
+    // whole circle mid-screen, half of it by an edge, a quarter in a corner — so
+    // none lands on another, on yours, or against the edge.
+    const random = createRandom(Math.floor(roll * 2 ** 31) ^ 0x27d4eb2d);
+    const [, reachMax] = DECOY_RING;
+    const blockedX = start.x < reachMax || start.x > viewport.width - 1 - reachMax;
+    const blockedY = start.y < reachMax || start.y > viewport.height - 1 - reachMax;
+    const arc = blockedX && blockedY ? Math.PI / 2 : blockedX || blockedY ? Math.PI : 2 * Math.PI;
+    const inward = Math.atan2(viewport.height / 2 - start.y, viewport.width / 2 - start.x);
+    const centre =
+      arc === 2 * Math.PI
+        ? random.next() * 2 * Math.PI
+        : blockedX && blockedY
+          ? inward
+          : blockedX
+            ? start.x < viewport.width / 2
+              ? 0
+              : Math.PI
+            : start.y < viewport.height / 2
+              ? Math.PI / 2
+              : -Math.PI / 2;
+    const step = arc / DECOY_COUNT;
+    const extra = Array.from({ length: DECOY_COUNT }, (_, i) => {
+      const angle = centre + (i - (DECOY_COUNT - 1) / 2) * step + random.range(-0.15, 0.15) * step;
+      const reach = random.range(DECOY_RING[0], DECOY_RING[1]);
+      return clampToViewport(
+        { x: real.x + Math.cos(angle) * reach, y: real.y + Math.sin(angle) * reach },
+        viewport
+      );
+    });
+    return { look: { ...restingLook(real), decoys: extra } };
+  },
+};
+
+export const DRUNK_AMPLITUDE = 40;
+
+export const drunk: Effect = {
+  id: 'drunk',
+  name: 'Drunk',
+  description: 'Your cursor wobbles about for 5 seconds.',
+  durationMs: 5000,
+  step: ({ real, elapsed, viewport }) => {
+    // Two slightly different periods, so the wobble never quite repeats.
+    const t = elapsed / 1000;
+    const x = real.x + DRUNK_AMPLITUDE * Math.sin(2 * Math.PI * t * 0.9);
+    const y = real.y + DRUNK_AMPLITUDE * 0.6 * Math.sin(2 * Math.PI * t * 1.37 + 1);
+    return { look: restingLook(clampToViewport({ x, y }, viewport)) };
+  },
+};
+
+export const TINY_SCALE = 0.25;
+
+export const tiny: Effect = {
+  id: 'tiny',
+  name: 'Tiny',
+  description: 'Your cursor shrinks to a quarter of its size for 6 seconds.',
+  durationMs: 6000,
+  step: ({ real }) => ({ look: { ...restingLook(real), scale: TINY_SCALE } }),
+};
+
+export const GIANT_SCALE = 4;
+
+export const giant: Effect = {
+  id: 'giant',
+  name: 'Giant',
+  description: 'Your cursor grows to four times its size for 5 seconds.',
+  durationMs: 5000,
+  step: ({ real }) => ({ look: { ...restingLook(real), scale: GIANT_SCALE } }),
+};

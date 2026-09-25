@@ -470,3 +470,290 @@ input[type='number']::-webkit-outer-spin-button {
     filter: blur(14px) saturate(2);
   }
 }
+
+/* Titan Forest Cat's stomp shakes the page content (cat-layer.tsx, useStompShake) —
+   not <body>, whose transform would move the fixed cat and cursor layers. */
+.xenocat-shake {
+  animation: xenocat-shake 0.35s linear both;
+}
+@keyframes xenocat-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translate(-4px, 2px);
+  }
+  40% {
+    transform: translate(4px, -2px);
+  }
+  60% {
+    transform: translate(-3px, -1px);
+  }
+  80% {
+    transform: translate(2px, 2px);
+  }
+}
+
+/* 8 Quantum Kitten: blinks in at several spots; blinks out. */
+.xenocat-enter-blink {
+  animation-name: xenocat-enter-blink;
+  animation-timing-function: steps(1, end);
+}
+@keyframes xenocat-enter-blink {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-60px, 30px) scale(0.8);
+  }
+  22% {
+    opacity: 0;
+  }
+  34% {
+    opacity: 1;
+    transform: translate(50px, -40px) scale(0.8);
+  }
+  46% {
+    opacity: 0;
+  }
+  58% {
+    opacity: 1;
+    transform: translate(-25px, -50px) scale(0.9);
+  }
+  70% {
+    opacity: 0;
+  }
+  82%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+.xenocat-exit-blink-out {
+  animation-name: xenocat-exit-blink-out;
+  animation-timing-function: steps(1, end);
+}
+@keyframes xenocat-exit-blink-out {
+  0%,
+  30%,
+  60% {
+    opacity: 1;
+  }
+  15%,
+  45%,
+  75%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 9 Magneto Bengal: slides in along a screen edge; slides off. */
+.xenocat-enter-slide-edge {
+  animation-name: xenocat-enter-slide-edge;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes xenocat-enter-slide-edge {
+  from {
+    transform: translateX(-110vw) skewX(-15deg);
+  }
+  80% {
+    transform: translateX(6px) skewX(4deg);
+  }
+  to {
+    transform: none;
+  }
+}
+.xenocat-exit-slide-off {
+  animation-name: xenocat-exit-slide-off;
+  animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.3);
+}
+@keyframes xenocat-exit-slide-off {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(110vw) skewX(-15deg);
+  }
+}
+
+/* 10 Orbit Abyssinian: spirals in; spirals out. */
+.xenocat-enter-spiral {
+  animation-name: xenocat-enter-spiral;
+  animation-timing-function: ease-out;
+}
+@keyframes xenocat-enter-spiral {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg) translateX(120px) rotate(0deg) scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(360deg) translateX(50px) rotate(-360deg) scale(0.7);
+  }
+  100% {
+    transform: rotate(720deg) translateX(0) rotate(-720deg);
+  }
+}
+.xenocat-exit-spiral-out {
+  animation-name: xenocat-exit-spiral-out;
+  animation-timing-function: ease-in;
+}
+@keyframes xenocat-exit-spiral-out {
+  0% {
+    transform: rotate(0deg) translateX(0) rotate(0deg);
+  }
+  50% {
+    transform: rotate(360deg) translateX(50px) rotate(-360deg) scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(720deg) translateX(120px) rotate(-720deg) scale(0.3);
+  }
+}
+
+/* 11 Decoy Burmese: splits from its own shadow; merges back into it. */
+.xenocat-enter-shadow-split {
+  animation-name: xenocat-enter-shadow-split;
+  animation-timing-function: ease-out;
+}
+@keyframes xenocat-enter-shadow-split {
+  0% {
+    opacity: 0.5;
+    transform: translate(10px, 14px) skewX(-30deg) scaleY(0.4);
+    filter: brightness(0) blur(2px);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(3px, 4px);
+    filter: brightness(0.3);
+  }
+  100% {
+    transform: none;
+    filter: none;
+  }
+}
+.xenocat-exit-shadow-merge {
+  animation-name: xenocat-exit-shadow-merge;
+  animation-timing-function: ease-in;
+}
+@keyframes xenocat-exit-shadow-merge {
+  0% {
+    transform: none;
+    filter: none;
+  }
+  50% {
+    transform: translate(3px, 4px);
+    filter: brightness(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, 14px) skewX(-30deg) scaleY(0.4);
+    filter: brightness(0) blur(2px);
+  }
+}
+
+/* 12 Wobble Fold: tumbles in; rolls away. */
+.xenocat-enter-tumble {
+  animation-name: xenocat-enter-tumble;
+  animation-timing-function: cubic-bezier(0.3, 0.9, 0.4, 1.3);
+}
+@keyframes xenocat-enter-tumble {
+  from {
+    opacity: 0;
+    transform: translate(-140px, -80px) rotate(-540deg) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.xenocat-exit-roll-away {
+  animation-name: xenocat-exit-roll-away;
+  animation-timing-function: ease-in;
+}
+@keyframes xenocat-exit-roll-away {
+  from {
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(180px) rotate(540deg);
+  }
+}
+
+/* 13 Munchkin Mite: grows from a dot; shrinks to nothing. */
+.xenocat-enter-grow-dot {
+  animation-name: xenocat-enter-grow-dot;
+  animation-timing-function: cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+@keyframes xenocat-enter-grow-dot {
+  from {
+    transform: scale(0.03);
+    filter: brightness(3);
+  }
+  to {
+    transform: none;
+    filter: none;
+  }
+}
+.xenocat-exit-shrink {
+  animation-name: xenocat-exit-shrink;
+  animation-timing-function: ease-in;
+}
+@keyframes xenocat-exit-shrink {
+  from {
+    transform: none;
+  }
+  to {
+    transform: scale(0);
+  }
+}
+
+/* 14 Titan Forest Cat: stomps in (the page shakes as it lands); stomps out. */
+.xenocat-enter-stomp {
+  animation-name: xenocat-enter-stomp;
+  animation-timing-function: linear;
+  transform-origin: 50% 100%;
+}
+@keyframes xenocat-enter-stomp {
+  0% {
+    transform: translateY(-160px) scale(1.4);
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.6, 0, 1, 1);
+  }
+  10% {
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(0) scale(1.45, 0.75);
+  }
+  75% {
+    transform: scale(0.95, 1.08);
+  }
+  100% {
+    transform: none;
+  }
+}
+.xenocat-exit-stomp-out {
+  animation-name: xenocat-exit-stomp-out;
+  transform-origin: 50% 100%;
+}
+@keyframes xenocat-exit-stomp-out {
+  0% {
+    transform: none;
+  }
+  25% {
+    transform: scale(1.3, 0.75);
+    animation-timing-function: cubic-bezier(0, 0, 0.4, 1);
+  }
+  60% {
+    transform: translateY(-120px) scale(0.9, 1.15);
+    animation-timing-function: cubic-bezier(0.6, 0, 1, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.6);
+  }
+}

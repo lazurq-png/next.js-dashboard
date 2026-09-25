@@ -1,6 +1,15 @@
 'use client';
 
-import { type CSSProperties, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  type CSSProperties,
+  type RefObject,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { type Cat, type CatEngine, createCatEngine } from './cat-engine';
 import { CatSprite } from './cat-sprite';
 import { CAT_TYPES, type CatType } from './cat-types';
@@ -49,6 +58,9 @@ export function XenocatCatsProvider({
     })
   );
   const [cats, setCats] = useState<Cat[]>([]);
+  // What a stomp shakes: the page content only. The cat layer (below) and the fake
+  // cursor sit outside it, so a transform here can never move them.
+  const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onResize = () => engine.resize({ width: window.innerWidth, height: window.innerHeight });
@@ -90,7 +102,9 @@ export function XenocatCatsProvider({
 
   return (
     <CatsContext.Provider value={api}>
-      {children}
+      <div ref={pageRef} data-testid="xenocat-page">
+        {children}
+      </div>
       <div
         aria-hidden="true"
         data-testid="xenocat-layer"
@@ -99,7 +113,13 @@ export function XenocatCatsProvider({
         {cats.map((cat) => {
           const type = types.find((t) => t.id === cat.typeId);
           return type ? (
-            <CatView key={cat.id} cat={cat} type={type} config={engine.config} />
+            <CatView
+              key={cat.id}
+              cat={cat}
+              type={type}
+              config={engine.config}
+              shakeTarget={pageRef}
+            />
           ) : null;
         })}
       </div>
@@ -107,7 +127,45 @@ export function XenocatCatsProvider({
   );
 }
 
-function CatView({ cat, type, config }: { cat: Cat; type: CatType; config: CatConfig }) {
+export const SHAKE_CLASS = 'xenocat-shake';
+export const SHAKE_MS = 350;
+
+/**
+ * Shakes the page content when a heavy cat lands (part-way into its arrival) and
+ * when it stomps off. Only for cat types with `shake`. Never <body>: a transform
+ * there would re-anchor every `position: fixed` layer — the cats and the fake
+ * cursor — to the scrolled document for the duration.
+ */
+function useStompShake(type: CatType, phase: Cat['phase'], target: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const body = target.current;
+    if (!body || !type.shake || (phase !== 'appearing' && phase !== 'leaving')) return;
+    const landsAfter = phase === 'appearing' ? type.entranceMs * 0.6 : 0;
+    let stop = 0;
+    const start = window.setTimeout(() => {
+      body.classList.add(SHAKE_CLASS);
+      stop = window.setTimeout(() => body.classList.remove(SHAKE_CLASS), SHAKE_MS);
+    }, landsAfter);
+    return () => {
+      window.clearTimeout(start);
+      window.clearTimeout(stop);
+      body.classList.remove(SHAKE_CLASS);
+    };
+  }, [type, phase, target]);
+}
+
+function CatView({
+  cat,
+  type,
+  config,
+  shakeTarget,
+}: {
+  cat: Cat;
+  type: CatType;
+  config: CatConfig;
+  shakeTarget: RefObject<HTMLElement | null>;
+}) {
+  useStompShake(type, cat.phase, shakeTarget);
   const size = config.catSize;
   // The arrival and departure animate the whole cat; the phases in between animate
   // the inner figure, so the two never fight over one `transform`.

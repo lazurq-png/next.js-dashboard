@@ -20,8 +20,8 @@ describe('the cat roster', () => {
     }
   });
 
-  it('follows the plan’s roster for cats 1–7', () => {
-    expect(CAT_TYPES.slice(0, 7).map((type) => [type.number, type.name, type.effect.id])).toEqual([
+  it('follows the plan’s roster for cats 1–14', () => {
+    expect(CAT_TYPES.slice(0, 14).map((type) => [type.number, type.name, type.effect.id])).toEqual([
       [1, 'Void Tabby', 'vanish'],
       [2, 'Gravi Coon', 'heavy'],
       [3, 'Pulsar Siamese', 'knockback'],
@@ -29,6 +29,13 @@ describe('the cat roster', () => {
       [5, 'Static Calico', 'jitter'],
       [6, 'Cryo Persian', 'freeze'],
       [7, 'Nebula Ragdoll', 'drift'],
+      [8, 'Quantum Kitten', 'teleport'],
+      [9, 'Magneto Bengal', 'magnet'],
+      [10, 'Orbit Abyssinian', 'orbit'],
+      [11, 'Decoy Burmese', 'decoys'],
+      [12, 'Wobble Fold', 'drunk'],
+      [13, 'Munchkin Mite', 'tiny'],
+      [14, 'Titan Forest Cat', 'giant'],
     ]);
   });
 

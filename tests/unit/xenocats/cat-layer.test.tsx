@@ -2,7 +2,14 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Xenocats, XenocatCatsProvider, useXenocats } from '@/app/ui/xenocats/cat-layer';
+import {
+  SHAKE_CLASS,
+  SHAKE_MS,
+  type Xenocats,
+  XenocatCatsProvider,
+  useXenocats,
+} from '@/app/ui/xenocats/cat-layer';
+import { catTypeById } from '@/app/ui/xenocats/cat-types';
 import { XenocatCursorProvider } from '@/app/ui/xenocats/fake-cursor';
 
 // Animation frames are faked and advanced explicitly, so nothing here depends on
@@ -147,5 +154,49 @@ describe('XenocatCatsProvider', () => {
     await frames();
     expect(phases()).toEqual(['sleeping']);
     expect(screen.getAllByText(/^z$/i)).toHaveLength(3);
+  });
+
+  it('Titan Forest Cat shakes the page content — never <body> — as it lands, briefly', async () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({
+      toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
+    });
+    renderCats();
+    act(() => {
+      cats.summon('titan-forest-cat');
+    });
+    const shaking = () => screen.getByTestId('xenocat-page').classList.contains(SHAKE_CLASS);
+    expect(shaking()).toBe(false); // still in the air
+    const landsAt = catTypeById('titan-forest-cat')!.entranceMs * 0.6;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(landsAt + 5);
+    });
+    expect(shaking()).toBe(true);
+    expect(document.body.classList.contains(SHAKE_CLASS)).toBe(false);
+    // The cat layer is outside what shakes.
+    expect(screen.getByTestId('xenocat-page').contains(screen.getByTestId('xenocat-layer'))).toBe(
+      false
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SHAKE_MS);
+    });
+    expect(shaking()).toBe(false);
+  });
+
+  it('other cats never shake the page', async () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({
+      toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'],
+    });
+    renderCats();
+    act(() => {
+      cats.summon('gravi-coon');
+    });
+    for (let t = 0; t < 1200; t += 50) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50);
+      });
+      expect(screen.getByTestId('xenocat-page').classList.contains(SHAKE_CLASS)).toBe(false);
+    }
   });
 });

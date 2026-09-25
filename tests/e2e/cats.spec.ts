@@ -31,6 +31,9 @@ async function cursorAt(page: Page) {
 /** Clicks a Summon button and returns where the real pointer was left. */
 async function summon(page: Page, id: string) {
   const button = page.getByTestId(`summon-${id}`);
+  // Scroll first: measuring a button below the fold and then clicking it (which
+  // scrolls) would record a pointer position the page has since moved away from.
+  await button.scrollIntoViewIfNeeded();
   const box = (await button.boundingBox())!;
   const pointer = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await page.mouse.move(pointer.x, pointer.y);
@@ -182,4 +185,157 @@ test('Nebula Ragdoll makes the cursor drift away while the pointer stands still'
   await expect
     .poll(async () => distance(await cursorAt(page), pointer), { timeout: 3000 })
     .toBeGreaterThan(80);
+});
+
+/** The fake cursor's scale, from its inline transform. */
+async function cursorScale(page: Page) {
+  const transform = await fakeCursor(page).evaluate((el) => (el as HTMLElement).style.transform);
+  return Number(/scale\(([-\d.]+)\)/.exec(transform)![1]);
+}
+
+async function catCentre(page: Page) {
+  const box = (await page.getByTestId('xenocat').boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+test('Quantum Kitten teleports the cursor away from a pointer that stands still', async ({
+  page,
+}) => {
+  await openCats(page);
+  const pointer = await summon(page, 'quantum-kitten');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'teleport');
+  const spots = new Set<string>();
+  await expect
+    .poll(
+      async () => {
+        const at = await cursorAt(page);
+        if (distance(at, pointer) > 40) spots.add(`${Math.round(at.x)},${Math.round(at.y)}`);
+        return spots.size;
+      },
+      { timeout: 3000, intervals: [100] }
+    )
+    .toBeGreaterThanOrEqual(2);
+});
+
+test('Magneto Bengal pulls the cursor towards itself', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'magneto-bengal');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'magnet');
+  const cat = await catCentre(page);
+  await expect
+    .poll(async () => distance(await cursorAt(page), cat) < distance(pointer, cat) * 0.5)
+    .toBe(true);
+});
+
+test('Orbit Abyssinian makes the cursor circle it', async ({ page }) => {
+  await openCats(page);
+  await summon(page, 'orbit-abyssinian');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'orbit');
+  const cat = await catCentre(page);
+  const angles: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    const at = await cursorAt(page);
+    const r = distance(at, cat);
+    // Clamped to the 70–140 px orbit (allowing for the screen edge and a frame's lag).
+    expect(r).toBeGreaterThan(40);
+    expect(r).toBeLessThan(170);
+    angles.push(Math.atan2(at.y - cat.y, at.x - cat.x));
+    await page.waitForTimeout(80);
+  }
+  expect(new Set(angles.map((a) => a.toFixed(1))).size).toBeGreaterThan(3);
+});
+
+test('Decoy Burmese adds three decoy cursors', async ({ page }) => {
+  await openCats(page);
+  await summon(page, 'decoy-burmese');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'decoys');
+  const visible = page.locator('[data-testid="fake-cursor-decoy"]:not([style*="opacity: 0"])');
+  await expect(visible).toHaveCount(3);
+  await expect(fakeCursor(page)).toHaveCSS('opacity', '1');
+});
+
+test('Wobble Fold makes the cursor wobble around a pointer that stands still', async ({ page }) => {
+  await openCats(page);
+  const pointer = await summon(page, 'wobble-fold');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'drunk');
+  let largest = 0;
+  for (let i = 0; i < 10; i++) {
+    largest = Math.max(largest, distance(await cursorAt(page), pointer));
+    await page.waitForTimeout(100);
+  }
+  expect(largest).toBeGreaterThan(15);
+  expect(largest).toBeLessThan(60);
+});
+
+test('Munchkin Mite shrinks the cursor to a quarter', async ({ page }) => {
+  await openCats(page);
+  await summon(page, 'munchkin-mite');
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'tiny');
+  await expect.poll(() => cursorScale(page)).toBe(0.25);
+});
+
+test('Titan Forest Cat grows the cursor fourfold, and shakes the page as it lands', async ({
+  page,
+}) => {
+  await openCats(page);
+  const shook = page.evaluate(
+    () =>
+      new Promise<boolean>((resolve) => {
+        const target = document.querySelector('[data-testid="xenocat-page"]')!;
+        const observer = new MutationObserver(() => {
+          if (target.classList.contains('xenocat-shake')) resolve(true);
+        });
+        observer.observe(target, { attributes: true, attributeFilter: ['class'] });
+        setTimeout(() => resolve(false), 4000);
+      })
+  );
+  await summon(page, 'titan-forest-cat');
+  expect(await shook).toBe(true);
+  await expect(fakeCursor(page)).toHaveAttribute('data-effect', 'giant');
+  await expect.poll(() => cursorScale(page)).toBe(4);
+});
+
+test('the stomp shake never moves the cats or the cursor, even on a scrolled page', async ({
+  page,
+}) => {
+  await openCats(page);
+  const pointer = await summon(page, 'titan-forest-cat'); // below the fold: the page is scrolled
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  // Sample while the shake class is on: the cat and the cursor must stay put.
+  const samples = await page.evaluate(
+    () =>
+      new Promise<{ catY: number; cursor: string }[]>((resolve) => {
+        const target = document.querySelector('[data-testid="xenocat-page"]')!;
+        // The last frame before the shake is the baseline; then five frames during it.
+        const out: { catY: number; cursor: string }[] = [];
+        let before: { catY: number; cursor: string } | null = null;
+        const sample = () => {
+          const cat = document.querySelector('[data-testid="xenocat"]');
+          const cursor = document.querySelector('[data-testid="fake-cursor"]') as HTMLElement;
+          if (cat) {
+            const box = cursor.getBoundingClientRect();
+            const now = { catY: cat.getBoundingClientRect().top, cursor: `${box.left},${box.top}` };
+            if (!target.classList.contains('xenocat-shake')) before = now;
+            else {
+              if (out.length === 0 && before) out.push(before);
+              out.push(now);
+            }
+          }
+          if (out.length >= 6) resolve(out);
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+        setTimeout(() => resolve(out), 4000);
+      })
+  );
+  expect(samples.length).toBeGreaterThan(0);
+  const before = samples[0];
+  for (const s of samples) {
+    expect(Math.abs(s.catY - before.catY)).toBeLessThan(40); // the stomp's own squash, not a scroll jump
+    expect(s.cursor).toBe(before.cursor);
+  }
+  // The cursor is still drawn at the pointer.
+  const box = (await fakeCursor(page).boundingBox())!;
+  expect(Math.abs(box.x - pointer.x)).toBeLessThan(40);
+  expect(Math.abs(box.y - pointer.y)).toBeLessThan(40);
 });

@@ -602,3 +602,82 @@ attack effect and its own way of appearing and disappearing".
   put; the jitter test pins `JITTER_PX` to 15 and requires offsets beyond 10 px,
   and drift's rate is pinned to 110 px/s. Its note that effect numbers live in
   `effects.ts` rather than `config.ts` is recorded as D12. `npm test` 149.
+
+## T8 — Cats 8–14 (`night-2026-09-25-t8-cats-8-14`)
+
+- Start: 2026-09-25 18:08, budget 14,551,189 tokens.
+- Base SHA: `98f2e30` (T7 merged).
+- T7 outcome: committed `98f2e30`, fast-forwarded, both branches pushed; CI
+  poll started (pending).
+- **T7 CI outcome: CI passed** — `night-2026-09-25-t7-cats-1-7`
+  https://github.com/lazurq-png/next.js-dashboard/actions/runs/36158617540,
+  `night-2026-09-25` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36158622488.
+
+### What the code does
+
+- `app/ui/xenocats/effects.ts`: seven new effects — **teleport** (three jumps
+  0.8 s apart to random on-screen spots; after each jump the cursor follows the
+  pointer's movement from the new spot, kept in per-attack `state`; the spots
+  are fixed by the attack's roll), **magnet** (eases in over 0.6 s to 75 % of
+  the way from the pointer to the cat; 4 s), **orbit** (circles the cat once
+  per 1.2 s, starting where the pointer was, radius clamped to 70–140 px; 3 s),
+  **decoys** (three extra identical cursors at fixed offsets within 160 px,
+  moving with yours — four cursors; 5 s), **drunk** (two sines of different
+  periods, up to 40 px; 5 s), **tiny** (scale 0.25; 6 s), **giant** (scale 4;
+  5 s).
+- `app/ui/xenocats/cat-types.ts`: cats 8–14 with looks, palettes, entrances and
+  exits; a `spots` coat pattern; a `shake` flag (Titan Forest Cat).
+- `app/ui/xenocats/cat-sprite.tsx`: Bengal-style rosettes (`spots`) on head,
+  body and the sleeping pose.
+- `app/ui/xenocats/cat-layer.tsx`: `useStompShake` adds `xenocat-shake` to the
+  page body for 350 ms when a `shake` cat lands (60 % into its entrance) and
+  when it stomps off, with its timers cleared on phase change and unmount.
+- `app/ui/global.css`: the page shake, and 14 animations — blink in at several
+  spots / blink out, slide in from the screen edge / slide off, spiral in / out,
+  split from its shadow / merge back, tumble in / roll away, grow from a dot /
+  shrink to nothing, stomp in / stomp out.
+- Tests: unit tests for all seven effects (teleport's three distinct jumps,
+  following the pointer, determinism; magnet strength and direction; orbit
+  radius, start point and turn rate, radius clamping; decoys count, spread and
+  movement; drunk bounds and reach; tiny/giant scales), roster order for cats
+  1–14, the Titan's shake timing and that other cats never shake; e2e for cats
+  8–14 on /cats. The e2e `summon` helper now scrolls the button into view before
+  measuring it (a below-the-fold card had recorded a stale pointer position).
+- Screenshot: `screenshots/t8-cats-gallery.png` — all 14 cats.
+
+### Why it was added
+
+Plan task 8; the goal's "at least 20 cat types", each with "its own attack
+effect and its own way of appearing and disappearing".
+
+### Verification
+
+- `npm test` → **181 passed**. `npm run test:e2e` → **20 passed**; cats spec
+  ×3 → 51/51 after the helper fix (first run: 16/17, the Wobble test hit the
+  stale-pointer bug). Lint 0; typegen + tsc 0; Prettier clean.
+- Looked at: the gallery screenshot — 14 distinct cats, layout intact.
+  Not looked at: the animations and the page shake in motion.
+- Reviewer, pass 1: **Request Changes** — (1, medium) the stomp shake put a
+  transform on `<body>`, which re-anchors every `position: fixed` layer; on the
+  scrolled /cats page the cats and the fake cursor would jump by the scroll
+  offset for 350 ms, twice per Titan. Fixed: the shake now moves a wrapper round
+  the page content (`xenocat-page`), which the cat and cursor layers sit
+  outside; a new e2e test summons the Titan on a scrolled page and asserts the
+  cursor box never moves and the cat only squashes during the shake.
+  (2, low) decoys could pile up on each other or on the real cursor near an
+  edge. Fixed: spread evenly over the arc facing into the screen (full circle,
+  half at an edge, a quarter in a corner), radius 80–160 px; tests over 50 rolls
+  mid-screen and at every edge and corner (a first "mirror inward" attempt
+  still left two 15.6 px apart in a corner — caught by the test).
+- After the fixes: `npm test` **190 passed**; lint 0; typegen + tsc 0; cats
+  spec ×2 → 36/36; `npm run test:e2e` **21 passed**; Prettier clean.
+- Reviewer, pass 2: shake fix **confirmed**. One new low finding, introduced by
+  the decoy fix: the layout was computed from the pointer's *current* position,
+  so the decoys jumped when it crossed an edge band and swung round it in a
+  corner — giving the real cursor away. Fixed as recommended: the layout is
+  computed from `start` (where the attack began) and the decoys then move
+  exactly with the pointer; regression test added (pointer moved into the edge
+  band and near a corner → every decoy shifts by the same amount). Negative
+  control: laying out from `real` again fails it. Also taken: the scrolled-page
+  shake test now takes its baseline from the frame *before* the shake.
+  `npm test` 191; test:e2e 21; lint, tsc, Prettier green.
