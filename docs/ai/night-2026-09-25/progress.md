@@ -242,3 +242,96 @@ placeholder file).
   `night-2026-09-25-t2-e2e-and-ci` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36149930139,
   `night-2026-09-25` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36149929526.
   The build job succeeding means the `POSTGRES_URL` secret is set (Q4 resolved).
+
+## T4 — Cursor engine (`night-2026-09-25-t4-cursor-engine`)
+
+- Start: 2026-09-25 16:54, budget 14,838,317 tokens.
+- Base SHA: `ed68d9c` (T3 merged).
+- T3 outcome: committed `ed68d9c`, fast-forwarded, both branches pushed; CI
+  poll started (pending).
+
+### What the code does
+
+- `app/ui/xenocats/random.ts` (new): `createRandom(seed)` — Mulberry32 with
+  `next`, `range`, `int` (inclusive) and `pick`; the only randomness source.
+- `app/ui/xenocats/effects.ts` (new): the `Effect` contract — a pure
+  `step(input) → CursorLook` (position, visible, scale, blur, opacity) given the
+  real pointer, its movement since the last frame, the previous fake look, the
+  pointer at attack start, the cat's centre, elapsed ms, the viewport and one
+  per-attack random `roll`. Three effects: **vanish** (hidden 3 s), **heavy**
+  (30 % of real movement, 5 s), **knockback** (eases out 300 px directly away
+  from the cat in 250 ms, holds the offset, 1.5 s). Everything is clamped to
+  the viewport.
+- `app/ui/xenocats/cursor-controller.ts` (new): the fake cursor's state machine,
+  with time passed in: hidden until the pointer is first seen; follows it
+  exactly otherwise; `attack()` refuses while another effect runs (one at a
+  time); `frame()` sums pointer moves since the last frame, applies the active
+  effect, and snaps back to the real pointer when it ends; `isBlocking()` is
+  true exactly while an effect runs.
+- `app/ui/xenocats/fake-cursor.tsx` (new, client): `XenocatCursorProvider`
+  enables itself only with a precise pointer (`(pointer: fine)`), hides the
+  system cursor via a class on `<html>`, draws an `aria-hidden` SVG arrow each
+  animation frame, and, in the window's capture phase, cancels pointer
+  events (pointer/mouse down/up, click, dblclick, auxclick, contextmenu) while an
+  effect runs. The keyboard is never touched. `useXenocatCursor()` lets cats
+  start an attack.
+- `app/ui/global.css`: `html.xenocat-cursor-hidden` hides the system cursor.
+- `app/dashboard/layout.tsx`: wraps the dashboard in the provider.
+- Tests (new, `tests/unit/xenocats/`): random (determinism, ranges, pick),
+  effects (each effect's numbers, easing, clamping, the roll fallback),
+  controller (hidden until seen, following, blocking window boundaries,
+  one-at-a-time, snap-back, delta summing, resize), and the provider in jsdom
+  (cursor class and `aria-hidden`, cleanup, touch screens untouched, clicks
+  blocked only during an effect, keyboard never blocked, second attack refused).
+
+### Why it was added
+
+Plan task 4; the goal's cats "attack the mouse pointer", which a browser allows
+only through a fake cursor (human design decision). Effects are pure so each of
+the 20 cat types supplies one `step` and the engine stays unchanged; all
+randomness is seeded so tests are deterministic.
+- **T3 CI outcome: CI passed** — `night-2026-09-25-t3-security`
+  https://github.com/lazurq-png/next.js-dashboard/actions/runs/36150534838,
+  `night-2026-09-25` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36150540121.
+
+Revised after review (D8, D9): effects return `{ look, state? }` and receive
+their own per-attack `state` and the frame `dt`; `CursorLook.decoys` draws up to
+four extra cursors; the controller hides the cursor while the pointer is outside
+the page and refuses effects longer than 10 s; `cursor-kind.ts` (new) picks a
+hand, I-beam or not-allowed shape from the hovered element; a press begun during
+an effect is swallowed to its end; drag-start and drop are blocked during
+effects; keyboard-made clicks, submits and context menus (`detail === 0`) and
+keyboard selection always pass; the provider takes a `seed` and exposes its one
+`Random` for the cats.
+
+### Verification
+
+- `npm test` → exit 0, 8 files, **85 passed** (48 new in `tests/unit/xenocats/`).
+- Negative controls, each reversed by hand and followed by a green run:
+  click-blocking made inert → "blocks clicks while an effect runs" failed;
+  press flag made inert → the press-across-the-end test failed; pointer-origin
+  check forced true → the keyboard-activation test failed.
+- `npm run lint` → exit 0, no output (two react-hooks errors from the first
+  draft fixed: ref updated in an effect; test captures the cursor in an effect).
+- `npx next typegen && npx tsc --noEmit` → exit 0. `npm run test:e2e` → 3
+  passed. Prettier (LF-normalised) clean on all new files; `layout.tsx` was
+  already unformatted on the base (D3).
+- Not verified in a real browser: the dashboard needs a login and the
+  database, so no browser test renders the provider yet (T6's `/cats` page
+  will). Cursor alignment, shape switching and leave/blur hiding are checked in
+  jsdom and by reading only.
+- Reviewer, pass 1: **Request Changes** — (1, medium) the interface could not
+  express decoys, delay or bounce; (2) a press begun during an effect could
+  still click after it, and drag/drop passed; (3) no cursor hints, stale cursor
+  after leaving the page; (4) the random source was not seedable or shared; plus
+  the two lint errors. All fixed (D8, D9).
+- Reviewer, pass 2: all of those **resolved**; one new medium finding —
+  blocking `click`/`contextmenu`/`selectstart` also blocked the keyboard
+  (Enter/Space activation, implicit submit, Ctrl+A, Shift+F10), shown with a
+  throwaway Chromium probe. Fixed as recommended: keyboard-made events
+  (`detail === 0`) pass, `selectstart` no longer blocked, tests added.
+- Reviewer, pass 3: keyboard fix **correct — Approve**. One low follow-up
+  applied as recommended: `swallow = fromPointer && (swallowPress || blocking)`,
+  so a pointer press that never ends in a click can no longer swallow a later
+  keyboard activation, and `pointercancel` clears the press flag; two tests
+  added. `npm test` 87 passed; lint, typegen + tsc, test:e2e (3) green.

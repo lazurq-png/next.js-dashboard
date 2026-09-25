@@ -117,3 +117,29 @@ it with `console.error` (as `app/lib/data.ts` does) and throws a generic
 "Database Error: Failed to Delete Invoice.". No route handlers remain
 (`app/seed/route.ts` and `app/query/route.ts` were deleted on `main` before the
 run), so nothing else can return a raw error object.
+
+## D8 — Effects carry their own per-attack state, a frame `dt`, and optional decoys (T4)
+
+The first interface (`step(input) → CursorLook`, with only the previous look
+carried) could not express three roster effects: **decoys** (four cursors),
+**delay** (800 ms behind: needs a history of real positions) and **bounce**
+(momentum: needs velocity and frame time). Reviewer finding, fixed in T4 rather
+than rediscovered in T7–T9: `Effect<S>.step(input) → { look, state? }`, with
+`input.state` (the effect's own value from its previous frame, `undefined` on
+the first, reset per attack) and `input.dt`; `CursorLook.decoys` draws up to
+`MAX_DECOYS` (4) identical extra cursors. Per-frame randomness (jitter,
+teleport) seeds `createRandom` from the attack's `roll` and keeps the generator
+position in `state`, so effects stay pure and deterministic.
+
+## D9 — The fake cursor keeps the platform's hints and never outstays the pointer (T4)
+
+Hiding the system cursor is the human's decision; the fake cursor's fidelity is
+not. It shows a hand over links and controls, an I-beam over text fields and
+"not allowed" over disabled controls (`cursor-kind.ts`), hides when the pointer
+leaves the window or the window loses focus, and swallows a whole press that
+began during an effect even if released after it (otherwise the browser
+dispatches `click` on release). Drag-start, drop and select-start are blocked
+during effects too. An effect longer than 10 s (`MAX_EFFECT_MS`) is refused,
+since clicks are blocked for its whole duration. Known gap: a native `<select>`
+popup may not report the pointer leaving, so the arrow can linger at its edge
+while the popup is open.

@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Pages with cats draw their own cursor (app/ui/xenocats/fake-cursor.tsx). */
+html.xenocat-cursor-hidden,
+html.xenocat-cursor-hidden * {
+  cursor: none !important;
+}
+
 input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
