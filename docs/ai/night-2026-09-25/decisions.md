@@ -151,3 +151,19 @@ writes (the e2e server) and `next typegen` does not refresh. After an e2e run on
 another branch it can reference routes this branch lacks. When `tsc` reports a
 missing module under `.next/dev/types`, remove that directory (build output the
 run itself created) and re-run the type check.
+## D10 — /cats only summons; the dashboard auto-spawns (T6)
+
+The plan puts cats on every dashboard page and on a public /cats page whose
+per-type Summon buttons the browser tests use. On /cats the cats provider runs
+with `autoSpawn={false}`: cats come only when summoned. A random cat pouncing
+mid-test would block the very clicks the tests make, and a gallery that attacks
+while you read it is hard to browse; the dashboard keeps the full haunting. If
+the human wants ambient cats on /cats too, it is one prop.
+
+## D11 — The system cursor is hidden on the first pointer move, not on load (T6)
+
+Found by the first real-browser test: the provider hid the system cursor as soon
+as it enabled (after hydration), but the fake cursor cannot be drawn until the
+pointer's position is known, so until the first mouse move there was no cursor
+on screen at all. The class that hides it is now added on the first
+`pointermove`. The browser tests nudge the mouse until the page has taken over.

@@ -467,3 +467,75 @@ art and animations come in T7–T9 on top of this roster shape.
   route types `next dev` wrote on the T6 branch — D1 amended); `npm run
   test:e2e` 3 passed; Prettier clean. Reviewer not re-run: test-only change to
   make existing assertions deterministic.
+
+## T6 — The `/cats` page (`night-2026-09-25-t6-cats-page`)
+
+- Start: 2026-09-25 17:30, budget 14,683,219 tokens.
+- Base SHA: `d34782b` (T5 merged); after T5's CI cycle 1 the branch was
+  fast-forwarded onto `c57f229` and then `2f56578` (T5 CI cycles 1 and 2), so
+  T6's diff is measured from `2f56578`.
+- T5 outcome: committed `d34782b`, fast-forwarded, both branches pushed; CI
+  failed — see "T5 — CI failure, cycle 1" above.
+
+### What the code does
+
+- `auth.config.ts`: the `authorized` callback returns `true` for exactly
+  `/cats` and paths under `/cats/`, before the dashboard and logged-in-redirect
+  rules, so the gallery is open to everyone and signed-in users are no longer
+  bounced off it to `/dashboard`. Everything else is unchanged.
+- `app/cats/page.tsx` (new): the public "The cats" page — heading, one-line
+  introduction, a link back to the dashboard, and the gallery.
+- `app/ui/xenocats/cat-gallery.tsx` (new, client): runs the fake cursor and the
+  cats with `autoSpawn={false}` (D10); one card per cat type with its roster
+  number, name, a 64 px thumbnail of its awake SVG, its effect's name and
+  one-line description, and a "Summon" button (`summon-<id>`, accessible name
+  "Summon <name>"). A polite status line says the cat is coming, or that five
+  are already here.
+- `app/ui/xenocats/fake-cursor.tsx`: hides the system cursor on the first
+  pointer move instead of on mount (D11).
+- Tests: `tests/unit/auth-config.test.ts` (new) — dashboard kept for signed-in
+  users, signed-in users redirected from other pages, `/cats` and `/cats/...`
+  open signed in or out, look-alikes `/catsuit` and `/cats-admin` not opened;
+  `tests/e2e/cats.spec.ts` (new, real Chromium) — every card and button listed;
+  the fake cursor replaces the system one and follows the pointer; Void Tabby
+  hides the cursor and a click during the effect changes nothing, then the
+  cursor returns; Gravi Coon: a 200 px real move moves the fake cursor 40–100 px;
+  Pulsar Siamese flings it >100 px from the pointer, further from the cat;
+  a summoned cat attacks and leaves.
+
+### Why it was added
+
+Plan task 6; the goal requires "browser tests ... that prove all of this", and
+this page is how they reach the cats without a login or the database (human
+design decision).
+
+### Verification
+
+- `npm run test:e2e` → **9 passed** (6 new); the cats spec repeated three times
+  → 18/18 passed. First run: 5/6 — the failure was D11, fixed in the code.
+- `npm test` → 12 files, **117 passed**. `npm run lint` → exit 0.
+  `npx next typegen && npx tsc --noEmit` → exit 0. Prettier (LF-normalised)
+  clean on all changed files.
+- Reviewer, pass 1: **Needs Investigation** — the code and the `auth.config.ts`
+  change sound (only `/cats` and `/cats/...` opened; look-alikes, `..`, and
+  encoded paths checked; `/dashboard` cannot be exposed), but its browser-test
+  run was cut short when I parked T6 mid-review (see T5 CI cycle 1). Four low
+  findings, all fixed: the click-blocking test now proves no Gravi Coon arrived
+  and that clicks work again after the effect; the list test checks every
+  `CAT_TYPES` entry (count, name, description, thumbnail, button); the
+  knockback test polls while the effect is still running, from the pointer the
+  summon recorded; the refusal message no longer claims "five cats" when the
+  cause is no free spot, and a repeated message is re-announced.
+- After the fixes: cats spec ×5 → **30/30 passed**; `npm run test:e2e` → 9
+  passed; `npm test` → 117 passed; lint, typegen + tsc, Prettier green.
+- Reviewer, pass 2: **Approve**, no findings — it re-ran `npm test` (117),
+  lint, typegen + tsc, and the cats spec ×5 (30/30) on an unchanging tree.
+- Commit held by the §2 step 4 gate until T5's CI is green again.
+- **T5 CI outcome after cycle 2: CI passed** — all jobs and all three unit-test
+  groups `success`: `night-2026-09-25-t5-cat-engine`
+  https://github.com/lazurq-png/next.js-dashboard/actions/runs/36156623719,
+  `night-2026-09-25` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36156627993.
+  T5: **CI failed, fixed in 2 cycles (Unit tests (cats, jsdom))**. The run's
+  three-cycle budget for T5 is at 2.
+- T6 re-verified on base `2f56578`: `npm test` 117, `npm run test:e2e` 9, lint,
+  typegen + tsc green.

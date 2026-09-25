@@ -48,10 +48,17 @@ afterEach(() => {
 });
 
 describe('XenocatCursorProvider', () => {
-  it('hides the system cursor and draws a fake one, hidden from assistive technology', () => {
+  it('keeps the system cursor until the pointer moves, so there is always a cursor', () => {
     mockPointer(true);
     renderPage();
+    expect(document.documentElement.classList.contains(HIDE_CURSOR_CLASS)).toBe(false);
+    fireEvent.pointerMove(window, { clientX: 5, clientY: 5 });
     expect(document.documentElement.classList.contains(HIDE_CURSOR_CLASS)).toBe(true);
+  });
+
+  it('draws a fake cursor hidden from assistive technology', () => {
+    mockPointer(true);
+    renderPage();
     // The cursor and its decoys sit inside one aria-hidden layer.
     expect(screen.getByTestId('fake-cursor').closest('[aria-hidden="true"]')).not.toBeNull();
     for (const decoy of screen.getAllByTestId('fake-cursor-decoy')) {
@@ -62,6 +69,7 @@ describe('XenocatCursorProvider', () => {
   it('gives the system cursor back when it unmounts', () => {
     mockPointer(true);
     renderPage();
+    fireEvent.pointerMove(window, { clientX: 5, clientY: 5 });
     cleanup();
     expect(document.documentElement.classList.contains(HIDE_CURSOR_CLASS)).toBe(false);
   });

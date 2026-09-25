@@ -98,9 +98,11 @@ export function XenocatCursorProvider({
   useEffect(() => {
     if (!enabled) return;
     const root = document.documentElement;
-    root.classList.add(HIDE_CURSOR_CLASS);
 
     const onMove = (event: PointerEvent) => {
+      // Hide the system cursor only once the fake one knows where to draw: until the
+      // first move after load there would otherwise be no cursor on screen at all.
+      root.classList.add(HIDE_CURSOR_CLASS);
       controller.pointerMove({ x: event.clientX, y: event.clientY });
       setKind(cursorKindFor(event.target));
     };
