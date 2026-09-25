@@ -268,8 +268,12 @@ or test copy. Opening a page reads it; submitting any form runs a Server Action
 that writes to it. Treat a browser check that submits a form as a change to real
 data.
 
-There is **no CI** (no `.github/workflows/`). Nothing runs on push, so no CI
-result can be reported.
+There is **no CI** yet (no `.github/workflows/`). When there is, it runs on
+GitHub, not on your machine: never report a CI result you have not observed.
+The one sanctioned way to observe one is the night-run skill's read-only poll
+of the public Actions API for a commit that run pushed
+(`.claude/skills/night-run/SKILL.md` §2 step 6) — a narrow, documented case,
+not licence to check CI any other way.
 
 A clean type check and build prove the code compiles, not that a page works.
 For UI changes run the app and look (`.claude/rules/frontend.md`). When running
@@ -485,8 +489,8 @@ plan, its tasks or its goal are missing, and when the tasks are done it reports
 any gap to the goal rather than inventing work to close it. It defines the
 preflight, the branch-per-task and commit cadence, when a finished task's branch
 may be pushed and to where, the durable state files, the forbidden operations —
-including any write to the project's only database — the 08:00
-Europe/Stockholm deadline, the per-session budget reserve, and the stop
+including any write to the project's only database — the deadline (the
+plan's, or 08:00 Europe/Stockholm by default), the per-session budget reserve, and the stop
 conditions. `docs/ai/README.md` has the plan template.
 
 A run may span several sessions; its §9 covers resuming one, and what a session

@@ -29,6 +29,10 @@ Write the plan before starting the run:
 check. This is what the run judges every task, fork and its own success
 against.>
 
+## Limits
+
+Deadline: <YYYY-MM-DD HH:MM>   (optional; Europe/Stockholm; default is the first 08:00 after the start)
+
 ## Tasks
 
 1. <task> — <what "done" looks like, if it is not obvious>

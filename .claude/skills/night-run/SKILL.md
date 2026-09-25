@@ -1,6 +1,6 @@
 ---
 name: night-run
-description: Protocol for running unattended, with no human available to answer questions — overnight or long autonomous sessions, including ones spanning several sessions. Executes a human-written plan read from docs/ai/night-<today>/plan.md and works toward the goal that plan states and nothing else — the skill has no goal of its own, and it stops if the plan, its tasks or its goal are missing. Defines preflight and how to resume a run already in progress, a branch per task pushed as each one finishes, durable state, forbidden operations (including any write to the project's only database), the 08:00 Europe/Stockholm deadline, a per-session budget reserve that protects the morning report or a handoff, stop conditions, and a morning report that judges the run against the plan's goal and shows each task's code with what it does and why it was added. Use when starting an unsupervised run, resuming one, or when a session discovers mid-flight that nobody is there.
+description: Protocol for running unattended, with no human available to answer questions — overnight or long autonomous sessions, including ones spanning several sessions. Executes a human-written plan read from docs/ai/night-<today>/plan.md and works toward the goal that plan states and nothing else — the skill has no goal of its own, and it stops if the plan, its tasks or its goal are missing. Defines preflight and how to resume a run already in progress, a branch per task pushed as each one finishes, CI polled in the background while the next task proceeds, durable state, forbidden operations (including any write to the project's only database), the deadline (set by the plan, 08:00 Europe/Stockholm by default), a per-session budget reserve that protects the morning report or a handoff, stop conditions, and a morning report that judges the run against the plan's goal and shows each task's code with what it does and why it was added. Use when starting an unsupervised run, resuming one, or when a session discovers mid-flight that nobody is there.
 ---
 
 # Unattended Run
@@ -24,12 +24,14 @@ stop.
 - **Node is not on `PATH`.** Prefix every command with the `export PATH=...`
   line from the global `CLAUDE.md`. Shell state does not persist between calls,
   so this is every command, not once.
-- **Only git reaches outside the machine**: pushing and fetching this run's own
-  branches (§3). `npm run build` may *read* the database in `.env` while it
-  prerenders pages; nothing may *write* to it (§3).
+- **Two things reach outside the machine**, both narrow, both in §3's list:
+  pushing and fetching this run's own branches, and a read-only,
+  unauthenticated poll of GitHub Actions for commits this run pushed (§2 step
+  6). The build and tests may also *read* the database in `.env`; nothing may
+  *write* to it (§3).
 - **Work in parallel wherever nothing depends.** Independent reads and checks go
-  in one message of parallel tool calls. Long jobs (the build, the `reviewer`)
-  run in the background while you do the next independent thing; the harness
+  in one message of parallel tool calls. Long jobs (the build, the `reviewer`,
+  the CI poll) run in the background while you do the next independent thing; the harness
   re-invokes you when a background command or agent finishes. Never poll one
   yourself, and never `sleep` in the foreground, which is blocked anyway.
 - **The state files are the memory.** Write what the report will need into
@@ -101,6 +103,14 @@ Only today's directory counts. Never borrow another date's plan or its goal.
 - **Copy the goal verbatim** into `progress.md` (§1.4), so a compacted context
   or a later session judges against the human's words, not a paraphrase.
 
+**Limits.** An optional `## Limits` section may set `Deadline: YYYY-MM-DD HH:MM`
+(Europe/Stockholm). It replaces the default deadline (§8.2) and may be any time
+after the run starts, including days later. A deadline that is unreadable or
+already past is a stop, as for a missing goal. Anything else under `## Limits`
+is recorded in `progress.md` and copied into the report; the run cannot measure
+account usage, so a weekly-usage figure there is information, not a stop
+condition.
+
 The plan is **read-only** to the run:
 
 - Do not add, remove, reorder, reword or tick off anything in it, the goal
@@ -162,7 +172,7 @@ git ls-remote --heads origin "night-<YYYY-MM-DD>*"
 
 | Result | Action |
 | ------ | ------ |
-| No remote | Local-only run: record it, skip every push. Not a failure. |
+| No remote | Local-only run: record it, skip every push and poll. Not a failure. |
 | Reachable, no matching branch | Normal. |
 | Matching branch, **resuming** | Expected. Confirm with `git fetch origin && git merge-base --is-ancestor origin/night-<date> night-<date>`, then continue. |
 | Matching branch, **new run** | **Stop.** Someone else owns the namespace. |
@@ -204,8 +214,11 @@ npm run build; echo "exit $?"
   database refusing connections), it is left out of the gate for the whole run:
   record that, with the error line, and say in the report that no task was
   built. Any other build failure is a red baseline.
-- **There is no test suite.** Nothing here runs behaviour. The report says so
-  (§7).
+- **Tests**, once they exist: every test script in `package.json` (`npm test`,
+  `npm run test:e2e`, ...) joins the baseline and the gate, and must exit 0.
+  Until a task adds them there is no test suite, nothing runs behaviour, and
+  the report says so (§7). A test that needs the database may only read it
+  (§3).
 
 **A red baseline makes the repair task #1**, on
 `night-<YYYY-MM-DD>-t0-baseline`, through §2 like any task and never on `main`.
@@ -241,7 +254,26 @@ these additions.
    npx tsc --noEmit
    npm run build                                       # only if in the gate (§1.5)
    npx prettier --check <every file this task changed>
+   npm test; npm run test:e2e                          # every test script that exists (§1.5)
    ```
+
+   A task that adds a test script adds it to the gate from its own commit on.
+
+   - **Workflow lint** joins the gate only if the task changed a workflow (any
+     output from `git diff --name-only night-<date> -- .github/workflows/` or
+     `git ls-files --others --exclude-standard -- .github/workflows/`), or a
+     workflow is known to have failed, including by step 6's poll:
+
+     ```bash
+     ~/Binaries/actionlint/actionlint.exe \
+       -shellcheck ~/Binaries/shellcheck/shellcheck.exe \
+       -pyflakes ~/Binaries/pyflakes/Scripts/pyflakes.exe
+     ```
+
+     Always pass both tool paths. On its own, actionlint silently skips the
+     shellcheck and pyflakes rules when it cannot find the tools, and still
+     reports clean. If any of the three executables is missing, the task
+     cannot be verified: abandon it (§3) and name the missing tool.
 
    - **Lint diff.** Diff the lint output against `lint-baseline.txt`. A new
      warning is either fixed or recorded in `decisions.md` with its reason.
@@ -249,19 +281,21 @@ these additions.
    - **Formatting** applies to the task's own files only: `npx prettier --write
      <those files>`. Never `npm run format`, which rewrites the whole
      repository, and not every file there matches `.prettierrc`.
-   - **None of these runs behaviour.** A clean type check and build prove the
-     code compiles, not that it does what the task asked. Say which acceptance
-     criteria (§1.0) the checks cover and which only the reviewer's reading
-     covers.
+   - **Say what ran behaviour.** A clean type check and build prove the code
+     compiles, not that it does what the task asked; only tests run it. Say
+     which acceptance criteria (§1.0) a test covers and which only the
+     reviewer's reading covers.
    - **Undoing an experiment**: reverse your own edit. **Never
      `git checkout <file>` or `git restore <file>` to undo one.** That restores
      the last commit and throws away the task's uncommitted work.
 
-2. **UI work cannot be seen.** No browser is driven unattended here: there is no
-   Playwright, and adding it is a dependency (§3). Do not start `npm run dev` and
-   click through pages either: every form submits a Server Action that writes to
-   the real database (§3). A UI task's evidence is the type check, the build and
-   the reviewer. Report it as **built, not seen**, and name what a human should
+2. **UI work cannot be seen.** Nobody looks at a page unattended. Once the
+   repository has Playwright tests, a UI task is verified by an e2e test that
+   performs the interaction the change affects, and passes; before that, its
+   evidence is the type check, the build and the reviewer. Either way, never
+   submit a form that runs a Server Action that writes — in a test or by hand —
+   because it writes to the real database (§3). Report UI work as **tested in a
+   browser, not seen** (or **built, not seen**), and name what a human should
    look at.
 
 3. **Independent review.** For a non-trivial task, dispatch the `reviewer`
@@ -286,8 +320,13 @@ these additions.
      about it.
 
    Write the what and the why now, while the context is fresh. The morning
-   report copies them (§7). The entry cannot contain its own SHA or whether the
-   push succeeded. Those go into the next task's entry and the report.
+   report copies them (§7). The entry cannot contain its own SHA, or whether the
+   push or CI succeeded. Those go into the next task's entry and the report.
+
+   **Gate:** if the previous task's CI poll (step 6) has not resolved yet, wait
+   for its notification before this commit. Do something else useful meanwhile,
+   or end the turn and let the notification resume you. If it failed, handle
+   that first (step 6).
 
    One commit per task, on the task branch:
 
@@ -322,10 +361,52 @@ these additions.
    A **rejected push**: record it, push nothing further for the rest of the
    run, and keep working locally. No PRs, ever. Local-only runs skip this step.
 
-   This repository has **no CI** (no `.github/workflows/`), so nothing runs on
-   push and there is nothing to wait for. Record the push as "pushed; no CI".
-   If a task adds a workflow, still report "pushed; CI not observed" — this
-   protocol does not read CI results.
+   **Then poll CI in the background**, if the pushed commit has a workflow
+   (`git ls-tree -r --name-only HEAD -- .github/workflows/` prints something).
+   If it has none, record "pushed; no CI" and move on. Otherwise start the poll
+   with the Bash tool's `run_in_background: true`, record `CI: pending` for the
+   task, and **go straight on to the next task**:
+
+   ```bash
+   node .claude/skills/night-run/ci-poll.mjs "$(git rev-parse HEAD)" \
+     night-<date>-t<N>-<slug> night-<date>
+   ```
+
+   It waits 5 minutes, then checks every 3, and exits once every named branch
+   has a completed run, after 30 minutes, or after two API errors in a row. A
+   `PROVISIONAL:` branch (§4) is pushed alone, so pass only its own name. When
+   the notification arrives, record the outcome in `progress.md` (it is
+   committed with the next task):
+
+   - **All `success`** → "CI passed", with the run URLs. This is the only
+     outcome that may say so.
+   - **`UNOBSERVED`, `cancelled` or `skipped`** → "pushed; CI not observed",
+     and why. Never infer a result.
+   - **`failure`** → a verification failure found late. It continues this
+     task's three-cycle count (`.claude/rules/debugging.md` §8):
+     1. Name the failing jobs: append `/jobs` to the run's API URL
+        (`https://api.github.com/repos/lazurq-png/next.js-dashboard/actions/runs/<id>/jobs`).
+        Do not fetch logs, which needs auth and is outside §3's exception.
+     2. Park the task in flight. Stash **only the paths it touched**
+        (`git stash push -- <paths>`), never the pre-existing changes.
+     3. Check out task N's branch (still the run-branch tip, since step 4's
+        gate kept the next task from merging). Reproduce the failure locally
+        with the matching check, fix it in a **new commit** (never `--amend`,
+        because the commit is pushed), then steps 1–6 again: fast-forward,
+        push both, poll the new SHA.
+     4. Return: `git checkout <in-flight branch> && git merge --ff-only
+        night-<date> && git stash pop`. The in-flight branch has no commits of
+        its own (one commit per task, at the end), so this fast-forward always
+        succeeds.
+     5. On the third failed cycle, leave task N's branches pushed as they are
+        (nothing pushed may be rewritten), record the three hypotheses and what
+        each CI run showed, and continue. A failure that does not reproduce
+        locally is evidence that the environments differ (CI's secrets, a
+        fresh `npm ci`, Linux). Record that; do not guess. A second task
+        reaching three cycles stops the run (§6).
+
+   The API allows 60 unauthenticated requests an hour and one poll makes at
+   most 10, so never run more than one poll at a time outside a CI-fix cycle.
 
 7. **Never commit directly to the run branch.** It moves only by fast-forward,
    which is what makes `--ff-only` a real check. Anything left to record goes
@@ -373,8 +454,9 @@ Never, unattended:
   modifying anything outside this repository.
 - Deleting a file you did not create in this run.
 - Contacting any external service, **except** `git push`/`fetch` to `origin`
-  for this run's branches, and the database reads `npm run build` makes on its
-  own.
+  for this run's branches; the §2 step 6 poll (`ci-poll.mjs` and the `/jobs`
+  lookup): read-only, no token, only on commits this run pushed; and the
+  database reads the build and tests make.
 
 **If a task needs one of these, abandon it.** Write in `questions.md` what was
 needed, which rule blocked it, and the exact command or diff for a human to
@@ -437,7 +519,7 @@ End the run (merge, push and delete nothing further) when:
   (§1.3).
 - **A `--ff-only` merge is refused** (§2 step 5).
 - **The clock reaches the deadline** (§8.2). §8.4 decides whether the task in
-  flight finishes; 08:30 is the ceiling.
+  flight finishes; `D` + 30 minutes is the ceiling.
 - **The budget reaches roundup** (§8.6). That ends the *session*. It ends the
   *run* only if this session owes the report; otherwise hand off (§9.3).
 - **The plan's tasks are done.** Assess the goal (§1.0) and write the report.
@@ -447,8 +529,9 @@ End the run (merge, push and delete nothing further) when:
 
 A rejected push is **not** a stop. It ends pushing, not work.
 
-On stopping: the tree clean or its state explained, `progress.md` current, and
-the run branch at the last task that passed its checks.
+On stopping: the tree clean or its state explained, `progress.md` current,
+outstanding CI polls resolved or recorded as pending, and the run branch at the
+last task that passed its checks.
 
 ---
 
@@ -460,6 +543,9 @@ The **run's** last act. It is a task like any other, on
 that heading. It is never cut short for the clock (§8.5). An earlier session
 writes §9.3's handoff instead, which carries the same content.
 
+**Before writing it, let every outstanding CI poll resolve** (or reach its own
+30-minute timeout). The report's own push is not waited on.
+
 Build it from `plan.md`, `progress.md`, `questions.md` and `git`, not from
 memory. It contains:
 
@@ -469,7 +555,10 @@ memory. It contains:
   If it is not fully met, what is missing and why: the plan's tasks did not
   cover it, a task was abandoned or parked, or time or budget ran out.
 - **Completed**: a table of task, branch, SHA, verification actually run, and
-  push outcome ("pushed; no CI", "not pushed: rejected", "local-only").
+  CI outcome. Use "CI passed" only with a `success` in hand and the run URL,
+  otherwise "CI failed, fixed in N cycles (job)", "abandoned after 3 CI cycles
+  (job)", "pushed; CI not observed", "pushed; no CI", "not pushed: rejected" or
+  "local-only".
 - **Code by task** (below).
 - **Provisional**: what was built, on which question, on which branch.
 - **Abandoned**: the task, why, what it needed, and its local branch.
@@ -526,8 +615,10 @@ budget, cut prose, never facts.
 
 ## 8. Deadlines: the clock and the budget
 
-The run ends at whichever comes first: **08:00 Europe/Stockholm** (§8.1–§8.5),
-or the session **budget** (§8.6). Both resolve through §8.4's
+The run ends at whichever comes first: the **deadline** (§8.1–§8.5) — the
+plan's, or 08:00 Europe/Stockholm by default — or the session **budget**
+(§8.6). If the account's usage limit runs out first, the session simply stops;
+§2's commit-and-push per task is what bounds that loss. Both resolve through §8.4's
 finish-or-abandon, and both reserve room for the report instead of leaving it
 the remainder.
 
@@ -548,35 +639,37 @@ powershell -NoProfile -Command "[System.TimeZoneInfo]::ConvertTimeFromUtc([DateT
 
 ### 8.2 The checkpoints
 
-**The deadline is the first 08:00 after the run started, with its date**: a
-start at 22:00 on the 17th or at 00:30 on the 18th both give
-`2026-09-18 08:00`. It belongs to the run. A resumed session copies it from
-`progress.md` and never recomputes it. Every time below is on the deadline's
-date, so compare full dated readings: 23:10 on the 17th is not "after 07:30".
+**The deadline `D` is the plan's `Deadline:` (§1.0), or else the first 08:00
+after the run started, with its date**: a start at 22:00 on the 17th or at
+00:30 on the 18th both give `2026-09-18 08:00`. It belongs to the run. A resumed
+session copies it from `progress.md` and never recomputes it. Compare full dated
+readings, never times alone: 23:10 on the 17th is not "after 07:30" on the 18th.
 
-Read clock and budget at every task start (§2 step 0). After 07:00, also read
-them at the pauses inside a task: after a verification, before a repair cycle,
-and before dispatching the `reviewer`.
+Read clock and budget at every task start (§2 step 0). In the last hour before
+`D`, also read them at the pauses inside a task: after a verification, before a
+repair cycle, and before dispatching the `reviewer`.
 
-| From  | Rule |
-| ----- | ---- |
-| 07:30 | No new task. |
-| 08:00 | **Deadline.** The task in flight finishes or is abandoned (§8.4). Then the report. |
-| 08:30 | **Ceiling** (§8.5). Abandon whatever is in flight. Report now. |
+| From     | Rule |
+| -------- | ---- |
+| `D` − 30 min | No new task. |
+| `D`      | **Deadline.** The task in flight finishes or is abandoned (§8.4). Then the report. |
+| `D` + 30 min | **Ceiling** (§8.5). Abandon whatever is in flight. Report now. |
 
 ### 8.3 Estimating
 
 This repository has no run history yet. On the project this protocol came
 from, the median task took **~20 minutes** (range 3–50), and the `reviewer` took
-4–7 minutes of that. Verification here is faster (no test suite), but
-`npm run build` is the slowest check; time it in the baseline and record it.
+4–7 minutes of that. `npm run build` and the e2e suite are the slowest local
+checks; time them and record it. CI overlaps the next task (§2 step 6), so it
+adds wall-clock time only when it fails, and at the very end, where the report
+waits on the last poll.
 Replace these figures with this repository's own once a run has produced them.
-Do not start a task you think is large after 07:00. §8.4's overrun rescues a
+Do not start a task you think is large in the last hour before `D`. §8.4's overrun rescues a
 nearly finished task. It does not make a late start survivable.
 
 ### 8.4 At the deadline: finish or abandon
 
-At 08:00, **run the task in flight to completion** only if all of these hold:
+At `D`, **run the task in flight to completion** only if all of these hold:
 the change is written, verification is green or running and expected to pass,
 the `reviewer` has run or there is room for it, and no failure is unresolved.
 Otherwise **abandon it** (§3). Finishing from an unknown state is starting new
@@ -587,7 +680,7 @@ cannot be honoured, abandon.
 
 ### 8.5 The ceiling
 
-**08:30 is absolute.** "Nearly done" twice is evidence the estimate was wrong.
+**`D` + 30 minutes is absolute.** "Nearly done" twice is evidence the estimate was wrong.
 Abandon, write the report, stop. The report itself is never cut for the clock.
 
 ### 8.6 The budget
@@ -604,7 +697,7 @@ applies:
 
 | This session | Reserve | Closes with |
 | ------------ | ------- | ----------- |
-| is final: past 07:30, or less than one task's length before 08:00 | **30%**, or 150k | the morning report (§7) |
+| is final: past `D` − 30 min, or less than one task's length before `D` | **30%**, or 150k | the morning report (§7) |
 | otherwise; another session can follow | **10%**, or 60k | the handoff (§9.3) |
 
 Misjudging which session is final is safe, because a handoff is written to
@@ -616,7 +709,7 @@ because the run that does end on budget needs its report most. The
 `reviewer`'s own usage is billed to the subagent, not to this figure.
 
 **No figure visible:** say so in the report, and round the session up after five
-completed tasks, handing off first if it is before 07:30. After a context
+completed tasks, handing off first if it is before `D` − 30 min. After a context
 compaction, trust `progress.md` over memory.
 
 ---
@@ -629,8 +722,9 @@ holds them for a while, and nothing of its conversation survives it.
 ### 9.1 What a session owes the next
 
 The run branch with every completed task merged and pushed. State files current,
-with the goal quoted, real verification output, and each task's base SHA and
-its what/why (§2 step 4). A handoff (§9.3) as the last entry.
+with the goal quoted, real verification output, each task's base SHA and its
+what/why (§2 step 4), and every CI outcome observed. A handoff (§9.3) as the
+last entry.
 
 ### 9.2 Resuming
 
@@ -650,13 +744,15 @@ git log --oneline main..HEAD
    output against the existing `lint-baseline.txt` and never overwrite it.
 3. Under a new session heading, record this session's starting clock and budget
    (its own denominator) and copy the deadline as it stands.
-4. Pick up an abandoned task only if it was abandoned for time or budget. The
+4. Any CI recorded as `pending` belongs to a poll that died with the old
+   session. Run the poll again once on that SHA.
+5. Pick up an abandoned task only if it was abandoned for time or budget. The
    three-cycle limit belongs to the run and does not reset.
-5. Continue at §2 step 0. The resume entry is committed with the next task.
+6. Continue at §2 step 0. The resume entry is committed with the next task.
 
 ### 9.3 The handoff
 
-What a session writes instead of the morning report when it stops before 08:00:
+What a session writes instead of the morning report when it stops before `D`:
 appended to `progress.md` on `night-<YYYY-MM-DD>-t<N>-handoff`, merged and
 pushed. Head it `## Handoff`, **never** `## Morning report`, or §1 will treat
 the run as finished.
