@@ -1,0 +1,189 @@
+# Frontend Engineering Rules
+
+Open this for frontend and UI work (components, styles, browser-facing state).
+
+---
+
+## Existing Design System
+
+Before creating UI primitives, inspect the existing design system.
+
+Reuse existing:
+
+- buttons
+- inputs
+- modals
+- dialogs
+- cards
+- tables
+- menus
+- typography
+- layout primitives
+- form components
+
+Do not create duplicate primitives.
+
+---
+
+## Component Design
+
+Keep components focused.
+
+Prefer composition over giant components with many unrelated responsibilities.
+
+Follow existing component boundaries.
+
+Do not introduce a new component architecture for an isolated feature.
+
+---
+
+## State
+
+Use the repository's existing state-management pattern.
+
+Before introducing local/global state, determine:
+
+- where the source of truth belongs
+- whether the state can be derived
+- whether server state already provides the value
+- whether existing hooks/utilities solve the problem
+
+Do not introduce a state-management dependency for a small isolated requirement.
+
+---
+
+## Data Fetching
+
+Follow the existing data-fetching architecture.
+
+Consider:
+
+- loading
+- success
+- empty
+- error
+- retry
+- stale data
+- cancellation
+- optimistic updates where relevant
+
+Do not create ad-hoc fetch behavior when the application already has a standard mechanism.
+
+---
+
+## Accessibility
+
+Preserve or improve:
+
+- semantic HTML
+- labels
+- accessible names
+- keyboard navigation
+- focus behavior
+- focus restoration
+- error announcements
+- disabled states
+- appropriate ARIA usage
+
+Do not use ARIA to compensate for avoidable semantic HTML problems.
+
+---
+
+## Responsive Behavior
+
+For meaningful UI changes, consider:
+
+- mobile
+- tablet
+- desktop
+- long content
+- empty states
+- narrow containers
+- keyboard interaction
+
+Do not assume desktop-only behavior unless the product explicitly is desktop-only.
+
+---
+
+## This Repository's UI
+
+- **Server Components by default.** Add `'use client'` only where a component
+  needs state, effects or browser APIs (`search.tsx`, `nav-links.tsx`,
+  `login-form.tsx` and the invoice forms are the existing examples), and keep it
+  on the smallest component that needs it.
+- **Primitives that already exist:** `app/ui/button.tsx`, the invoice
+  `buttons.tsx` and `status.tsx`, `pagination.tsx`, `breadcrumbs.tsx`, the
+  skeletons in `skeletons.tsx`, fonts in `fonts.tsx`, and `@heroicons/react`
+  for icons. Styling is Tailwind 3 utility classes (with `@tailwindcss/forms`)
+  and `clsx` for conditional classes; `home.module.css` is the lone CSS module.
+- **States use the App Router file conventions:** `loading.tsx` (with
+  `<Suspense>` and a skeleton), `error.tsx`, and `not-found.tsx` with
+  `notFound()`. Add a state the same way before inventing a component for it.
+- **Search, filter and page state live in the URL** (`useSearchParams`,
+  `usePathname`, `useRouter` in `search.tsx` and `pagination.tsx`), debounced
+  with `use-debounce`. Follow that instead of adding client state.
+- **Forms** post to Server Actions and show errors from the `useActionState`
+  state the action returns. Keep the `aria-describedby` error regions the
+  existing forms have.
+
+---
+
+## UI Verification
+
+After significant UI work:
+
+1. `npm run lint` and `npx tsc --noEmit`
+2. `npm run build`
+3. start the application — `npm run dev`
+4. inspect the actual rendered UI in a browser, at phone and desktop width
+5. test important interactions
+
+There is no test suite here, so steps 3–5 are the only evidence a page works.
+Lint, type check and build prove the code compiles, not that anything renders
+correctly, and none of them are UI evidence.
+
+**Step 5 touches real data.** The app's only database is the one in `.env`;
+creating, editing or deleting an invoice in the browser changes it for real.
+Test mutations deliberately, and undo what you created.
+
+### Unattended: nobody can look
+
+There is no browser tool installed (no Playwright), and adding one is a
+dependency decision a human makes. So an unattended UI change is verified only
+by steps 1–2 and a reviewer's reading. Report it as **built, not seen**, name
+what a human should check, and never imply the UI was looked at. Primarily
+visual changes are poor unattended work for that reason.
+
+---
+
+## Visual Consistency
+
+Match existing:
+
+- spacing
+- typography
+- colors
+- borders
+- shadows
+- interaction states
+- motion
+- responsive behavior
+
+Do not invent a second design language.
+
+---
+
+## Performance
+
+Avoid unnecessary:
+
+- rerenders
+- expensive computations
+- network requests
+- large client bundles
+- event listeners
+- DOM work
+
+Do not optimize prematurely.
+
+Measure or identify a concrete reason before introducing complex optimization.
