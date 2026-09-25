@@ -38,7 +38,7 @@ Addendum (T2): `AUTH_SECRET` is missing locally too — `next dev` logged
 `MissingSecret` until the Playwright config supplied a throwaway one (D4). The
 running app needs a real one in `.env` for login to work.
 
-## Q4 — Add the `POSTGRES_URL` repository secret
+## Q4 — Add the `POSTGRES_URL` repository secret (resolved: T2 CI build passed)
 
 CI's *build* job reads `secrets.POSTGRES_URL` (plan task 2). Until it is set in
 GitHub → Settings → Secrets and variables → Actions, that job fails on every push
@@ -57,3 +57,15 @@ file from the repository is reserved for a human (§3).
 
 Committed in T2 (D5). If you do not want it, delete the block and add
 `agentRules: false` to `next.config.ts`; otherwise `next dev` re-adds it.
+
+## Q7 — Delete `app/lib/placeholder-data.ts` and change the demo password?
+
+Nothing imports `app/lib/placeholder-data.ts` any more (it fed the deleted seed
+route), yet it is still listed in `tsconfig.json` and still contains the
+course's demo login, `user@nextmail.com` / `123456`. If the hosted database was
+seeded from it, that login works on the deployed dashboard for anyone who has
+read the Next.js course.
+
+- **Recommended:** change that user's password in the database (a write the run
+  may not make), then delete the file and its `tsconfig.json` entry (a deletion
+  the plan did not permit).

@@ -184,3 +184,61 @@ split: D4. The `AGENTS.md` block: D5. `next-env.d.ts`: D6.
   names `E2E_SERVER=start`. Docs-only change, so no third review.
 - Behaviour covered by tests: the three smoke paths above. Not covered: search,
   pagination and the dashboard pages (they need a session and the database).
+
+## T3 — Security baseline (`night-2026-09-25-t3-security`)
+
+- Start: 2026-09-25 16:48, budget 14,861,965 tokens.
+- Base SHA: `48124b5` (T2 merged).
+- T2 outcome: committed `48124b5`, fast-forwarded, both branches pushed; CI
+  poll started in the background (pending).
+
+### What the code does
+
+- `app/lib/actions.ts`: a private `isSignedIn()` helper reads `auth()`.
+  `createInvoice` and `updateInvoice` first return "You must be logged in to
+  create/update an invoice." without a session, before validating or touching
+  the database; `deleteInvoice` throws `Unauthorized`. `deleteInvoice` now
+  catches a database error, logs it server-side and throws a generic
+  "Database Error: Failed to Delete Invoice.". `authenticate` is unchanged.
+- `tests/unit/actions.test.ts` (new): with `postgres`, `@/auth`, `next-auth`,
+  `next/cache` and `next/navigation` replaced by fakes (no database, no real
+  session), proves each writing action refuses without a session — including a
+  session object without a user — and makes no SQL call, redirect or
+  revalidation; and, signed in, that create/update store cents
+  (12.50 → 1250), redirect, and that delete hides the database error text.
+
+### Why it was added
+
+Plan task 3; the goal says "no security problem known at the start of the run
+is left open". At the start, the actions accepted calls from anyone who could
+POST to the site (Next's docs: Server Functions are public endpoints; `proxy.ts`
+only gates navigation). The route deletions were already done on `main`
+(`a1e8040`). Design: D7. Left for the human: Q7 (demo password, unused
+placeholder file).
+
+### Verification
+
+- `npm test` → exit 0, 3 files, **37 passed** (10 new in `actions.test.ts`).
+- Negative control **not run**: removing a session check to watch its test fail
+  is the same temporary security-weakening edit the session's classifier
+  refused in T2, so it was not attempted. The reviewer confirmed by reading
+  that each refusal test fails without its check (see below).
+- `npm run test:e2e` → 3 passed. `npm run lint` → exit 0, same as baseline.
+  `npx next typegen && npx tsc --noEmit` → exit 0. Prettier (LF-normalised)
+  on `actions.ts` and `actions.test.ts` → pass.
+- Reviewer: **Approve.** It confirmed every writing action checks the session
+  first (before `formData` is read), `authenticate` rightly has none, no route
+  handler remains, redirects still follow the try/catch, and by reading that
+  removing any check or moving it after validation fails a test. One low
+  finding — `createInvoice`/`updateInvoice` swallowed database errors without
+  logging them — fixed by adding `console.error('Database Error:', error)` to
+  both, as recommended; tests, lint, tsc and Prettier re-run green (37 passed).
+  Its note that the demo password in `app/lib/placeholder-data.ts` keeps a
+  known problem open is Q7.
+- Not verified: refusal against a running app (no Server Action may be invoked
+  against the real database).
+- **T2 CI outcome: CI passed** — all jobs `success` on both pushed branches
+  (checks, build + production browser tests, dev-server browser tests):
+  `night-2026-09-25-t2-e2e-and-ci` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36149930139,
+  `night-2026-09-25` https://github.com/lazurq-png/next.js-dashboard/actions/runs/36149929526.
+  The build job succeeding means the `POSTGRES_URL` secret is set (Q4 resolved).

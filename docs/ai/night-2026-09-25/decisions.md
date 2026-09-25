@@ -94,3 +94,26 @@ and `next typegen` write the `.next/types/...` variant. It is listed in
 part of any task's change, so the run restores it (`git restore -- next-env.d.ts`)
 before committing. Untracking it is a deletion from the repository, which §3
 reserves for a human (Q5).
+
+## D7 — Session checks: returned message for form actions, thrown error for delete (T3)
+
+Next 16's bundled docs (`data-security.md`, `forms.md`, `07-mutating-data.md`)
+say to verify authentication inside every Server Function, since they are
+reachable by direct POST. `createInvoice` and `updateInvoice` are `useActionState`
+form actions whose `State.message` the forms already display, so they *return*
+"You must be logged in to … an invoice." — the form shows it instead of an error
+page. `deleteInvoice` returns nothing and is called from a plain form action, so
+it *throws* `Unauthorized`, as the docs' own example does; the dashboard's
+`error.tsx` boundary catches it. The check runs before validation, so a caller
+without a session learns nothing about the form. `authenticate` (the login
+action) deliberately has no check.
+
+Authorization beyond "signed in" does not apply: invoices have no owner column,
+and every account is an administrator of one shared ledger. Per-user ownership
+would be a schema change (§3) and a product decision.
+
+`deleteInvoice` previously let a database error propagate unwrapped; it now logs
+it with `console.error` (as `app/lib/data.ts` does) and throws a generic
+"Database Error: Failed to Delete Invoice.". No route handlers remain
+(`app/seed/route.ts` and `app/query/route.ts` were deleted on `main` before the
+run), so nothing else can return a raw error object.

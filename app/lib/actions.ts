@@ -3,11 +3,18 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import postgres from 'postgres';
-import { signIn } from '@/auth';
+import { auth, signIn } from '@/auth';
 import { AuthError } from 'next-auth';
 import { CreateInvoice, UpdateInvoice } from '@/app/lib/schemas';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+
+// Server Actions are public POST endpoints: proxy.ts only gates page navigation,
+// so every action that changes data checks the session itself.
+async function isSignedIn() {
+  const session = await auth();
+  return !!session?.user;
+}
 
 export type State = {
   errors?: {
@@ -19,6 +26,10 @@ export type State = {
 };
 
 export async function createInvoice(prevState: State, formData: FormData) {
+  if (!(await isSignedIn())) {
+    return { message: 'You must be logged in to create an invoice.' };
+  }
+
   // Validate form using Zod
   const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
@@ -46,7 +57,8 @@ export async function createInvoice(prevState: State, formData: FormData) {
       VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
     `;
   } catch (error) {
-    // If a database error occurs, return a more specific error.
+    // Log the database error on the server; return only a generic message.
+    console.error('Database Error:', error);
     return {
       message: 'Database Error: Failed to Create Invoice.',
     };
@@ -58,6 +70,10 @@ export async function createInvoice(prevState: State, formData: FormData) {
 }
 
 export async function updateInvoice(id: string, prevState: State, formData: FormData) {
+  if (!(await isSignedIn())) {
+    return { message: 'You must be logged in to update an invoice.' };
+  }
+
   const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
@@ -81,6 +97,7 @@ export async function updateInvoice(id: string, prevState: State, formData: Form
       WHERE id = ${id}
     `;
   } catch (error) {
+    console.error('Database Error:', error);
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
 
@@ -89,7 +106,18 @@ export async function updateInvoice(id: string, prevState: State, formData: Form
 }
 
 export async function deleteInvoice(id: string) {
-  await sql`DELETE FROM invoices WHERE id = ${id}`;
+  if (!(await isSignedIn())) {
+    throw new Error('Unauthorized');
+  }
+
+  try {
+    await sql`DELETE FROM invoices WHERE id = ${id}`;
+  } catch (error) {
+    // Log the database error on the server; send the client only a generic message.
+    console.error('Database Error:', error);
+    throw new Error('Database Error: Failed to Delete Invoice.');
+  }
+
   revalidatePath('/dashboard/invoices');
 }
 
