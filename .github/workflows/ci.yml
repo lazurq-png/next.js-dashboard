@@ -24,7 +24,22 @@ jobs:
       - run: npm run lint
       - name: Type check
         run: npx next typegen && npx tsc --noEmit
-      - run: npm test
+      # The unit tests run in three named groups, each even if an earlier one failed,
+      # so a failure is identifiable from the job's step names alone.
+      - name: Unit tests (dashboard)
+        if: ${{ !cancelled() }}
+        run: npx vitest run tests/unit/actions tests/unit/schemas tests/unit/utils
+      - name: Unit tests (cats, Node)
+        if: ${{ !cancelled() }}
+        run: >-
+          npx vitest run tests/unit/xenocats/random tests/unit/xenocats/effects
+          tests/unit/xenocats/cursor-controller tests/unit/xenocats/cat-engine
+          tests/unit/xenocats/cat-types
+      - name: Unit tests (cats, jsdom)
+        if: ${{ !cancelled() }}
+        run: >-
+          npx vitest run tests/unit/xenocats/cursor-kind tests/unit/xenocats/fake-cursor
+          tests/unit/xenocats/cat-layer
 
   build:
     name: Build + browser tests (production)

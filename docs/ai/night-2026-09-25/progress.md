@@ -414,3 +414,27 @@ art and animations come in T7–T9 on top of this roster shape.
   test:e2e (3), Prettier green.
 - Reviewer, pass 2: **Approve** — all four fixes confirmed; its optional note
   applied (the `global.css` comment now says the CSS durations are fallbacks).
+
+## T5 — CI failure, cycle 1 (on `night-2026-09-25-t5-cat-engine`)
+
+- 2026-09-25 17:40. **T5 CI outcome: failure** on both branches —
+  https://github.com/lazurq-png/next.js-dashboard/actions/runs/36154302052
+  (task branch), .../36154306455 (run branch). `/jobs`: *Lint, type check, unit
+  tests* failed at step **Run npm test**; *Build + browser tests (production)*
+  and *Browser tests (dev server)* succeeded.
+- T6 was in flight: parked with `git stash push -u -- <T6 paths>`. Mistake: the
+  T6 reviewer was still running its browser tests and lost its tree mid-run
+  (it reported this). Lesson: let an in-flight review finish before parking.
+- **Does not reproduce locally.** `CI=true npx vitest run` ×4 → 111/111 each;
+  six suites concurrently under CPU load → 111/111 each; no unhandled errors in
+  the output; the slowest jsdom test takes 105 ms, far from any timeout. No
+  Linux environment here (no WSL distro, no Docker), and CI logs need auth (§3).
+- Hypotheses: (H1) a timing-sensitive jsdom test (the new `cat-layer` tests
+  drive animation frames) behaves differently on the slower Linux runner;
+  (H2) something T5 added is platform-dependent; (H3) the step fails without a
+  failing test (an unhandled error after teardown).
+- **Cycle 1 action — diagnosis, not a guessed fix:** the checks job now runs the
+  unit tests as three named steps that each run even if an earlier one failed —
+  *dashboard* (37 tests), *cats, Node* (48), *cats, jsdom* (26); together the
+  same 111 as `npm test` (verified locally). The next CI run names the failing
+  group through `/jobs` alone. actionlint (with shellcheck, pyflakes) exit 0.
